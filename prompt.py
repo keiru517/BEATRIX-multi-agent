@@ -400,10 +400,10 @@ WAX_AGENT_PROMPT = """
 
 
     outputs:
-    - willingness_index (0-1 scale)
-    - willingness_state: [low, medium, high]
-    - motivation_profile: [intrinsic, extrinsic, mixed]
-    - notes: qualitative summary of context and motivation alignment
+        willingness_index: 0-1 scale
+        willingness_state: low | medium | high
+        motivation_profile: intrinsic | extrinsic | mixed
+        notes: qualitative summary of context and motivation alignment
 
 
     process_rules:
