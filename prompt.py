@@ -459,10 +459,10 @@ SEG_AGENT_PROMPT = """
 
 
     outputs:
-    - segment_label: [inactive, latent, emerging, active]
-    - activation_score (0-1)
-    - key_drivers: list of context or utility factors most relevant for classification
-    - comment: short narrative summary of segment rationale
+        segment_label: inactive | latent | emerging | active
+        activation_score: 0-1 scale
+        key_drivers: list of context or utility factors most relevant for classification
+        comment: short narrative summary of segment rationale
 
 
     process_rules:
