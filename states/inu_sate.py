@@ -1,9 +1,4 @@
-from typing_extensions import TypedDict
-
-class UtilityState(TypedDict):
-    INU: INUState
-    KNU: float
-    IDN: float
+from typing import TypedDict
 
 class INUState(TypedDict):
     inu: float
