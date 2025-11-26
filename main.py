@@ -59,6 +59,19 @@ TOTAL_NODES = len(AGENT_ORDER) + 1  # +1 for KERNEL_AGENT
 
 # Nodes
 def kernel_tool(state: State, workflow: StateGraph):
+    """
+    This tool is used to check existence of all the modules, their order and dependencies.
+
+    Checks:
+        • Existence of all required modules
+        • Correct module ordering
+        • Module dependency validity
+
+    Flow:
+        • On success → META_AGENT
+        • On failure → WATCHDOG_AGENT (error capture)
+    """
+
     total_nodes = len(workflow.nodes)
 
     # Get order of nodes by traversing edges from START
