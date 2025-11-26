@@ -91,12 +91,10 @@ CONTEXT_AGENT_PROMPT = """
 
     Your v1 task:
     Transform a simple JSON context input into a reduced context vector:
-        context = {
         "institutional": 0.xx,
         "social": 0.xx,
         "informational": 0.xx,
         "complexity": 0.xx
-        }
 
     Guidelines:
     • Each value must be between 0-1.
