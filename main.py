@@ -186,17 +186,6 @@ def awareness_tool(state: State):
         "awareness": "AWARENESS DATA",
     }
 
-def journey_tool(state: State):
-    """
-    This tool is used to calculate journey of the context.
-    """
-    print("journey_tool called")
-    # response = llm.invoke(f"Calculate journey of the following utilities: INU: {state['utilities']['INU']}, KNU: {state['utilities']['KNU']}, IDN: {state['utilities']['IDN']}")
-    return {
-        **state,
-        "journey": "JOURNEY DATA",
-    }
-
 def willingness_tool(state: State):
     """
     This tool is used to calculate readiness to act based on utility, awareness, journey and context.
@@ -217,6 +206,17 @@ def segment_tool(state: State):
     return {
         **state,
         "segment": "SEGMENT DATA",
+    }
+
+def journey_tool(state: State):
+    """
+    This tool is used to calculate journey of the context.
+    """
+    print("journey_tool called")
+    # response = llm.invoke(f"Calculate journey of the following utilities: INU: {state['utilities']['INU']}, KNU: {state['utilities']['KNU']}, IDN: {state['utilities']['IDN']}")
+    return {
+        **state,
+        "journey": "JOURNEY DATA",
     }
 
 def intervention_tool(state: State):
@@ -290,7 +290,7 @@ workflow.add_node("KNU_AGENT", knu_tool)
 workflow.add_node("IDN_AGENT", idn_tool)
 workflow.add_node("AWX_AGENT", awareness_tool)
 workflow.add_node("JNY_AGENT", journey_tool)
-workflow.add_node("WA_AGENT", willingness_tool)
+workflow.add_node("WAX_AGENT", willingness_tool)
 workflow.add_node("SEG_AGENT", segment_tool)
 workflow.add_node("INT_AGENT", intervention_tool)
 workflow.add_node("WATCHDOG_AGENT", watchdog_tool)
@@ -306,8 +306,8 @@ workflow.add_edge("CONTEXT_AGENT", "INU_AGENT")
 workflow.add_edge("INU_AGENT", "KNU_AGENT")
 workflow.add_edge("KNU_AGENT", "IDN_AGENT")
 workflow.add_edge("IDN_AGENT", "AWX_AGENT")
-workflow.add_edge("AWX_AGENT", "WA_AGENT")
-workflow.add_edge("WA_AGENT", "SEG_AGENT")
+workflow.add_edge("AWX_AGENT", "WAX_AGENT")
+workflow.add_edge("WAX_AGENT", "SEG_AGENT")
 workflow.add_edge("SEG_AGENT", "JNY_AGENT")
 workflow.add_edge("JNY_AGENT", "INT_AGENT")
 workflow.add_edge("INT_AGENT", "WATCHDOG_AGENT")
