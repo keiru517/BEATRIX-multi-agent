@@ -1,7 +1,7 @@
 import os
 import json
 
-from typing_extensions import TypedDict
+
 from langgraph.graph import StateGraph, START, END
 
 # from IPython.display import Image, display
@@ -19,7 +19,7 @@ from prompt import (
     KNU_AGENT_PROMPT,
     IDN_AGENT_PROMPT,
 )
-
+from states.graph_state import State
 # Load environment variables from .env file
 load_dotenv()
 
@@ -49,47 +49,7 @@ TOTAL_NODES = len(AGENT_ORDER) + 1  # +1 for KERNEL_AGENT
 
 
 # Graph state
-class State(TypedDict):
-    user_message: str
-    context: str
-    utilities: UtilityState
-    awareness: float
-    journey: float
-    willingness: float
-    segment: float
-    intervention: float
-    validation: float
-    total_nodes: int
-    node_order: list[str]
 
-
-class UtilityState(TypedDict):
-    INU: INUState
-    KNU: float
-    IDN: float
-
-
-class INUState(TypedDict):
-    inu: float
-    fepsde: FEPSDEState
-    timing: TimingState
-    explanation: str
-
-
-class FEPSDEState(TypedDict):
-    financial: float
-    emotional: float
-    physical: float
-    social: float
-    digital: float
-    ecological: float
-
-
-class TimingState(TypedDict):
-    instant: float
-    short: float
-    medium: float
-    long: float
 
 
 # Nodes
