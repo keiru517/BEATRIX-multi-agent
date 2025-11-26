@@ -3,6 +3,7 @@ import json
 
 from typing_extensions import TypedDict
 from langgraph.graph import StateGraph, START, END
+
 # from IPython.display import Image, display
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import (
@@ -12,7 +13,12 @@ from langchain_core.messages import (
 )
 from dotenv import load_dotenv
 
-from prompt import CONTEXT_AGENT_PROMPT, INU_AGENT_PROMPT, KNU_AGENT_PROMPT, IDN_AGENT_PROMPT
+from prompt import (
+    CONTEXT_AGENT_PROMPT,
+    INU_AGENT_PROMPT,
+    KNU_AGENT_PROMPT,
+    IDN_AGENT_PROMPT,
+)
 
 # Load environment variables from .env file
 load_dotenv()
@@ -39,7 +45,7 @@ AGENT_ORDER = [
     "WATCHDOG_AGENT",
 ]
 
-TOTAL_NODES = len(AGENT_ORDER) + 1 # +1 for KERNEL_AGENT
+TOTAL_NODES = len(AGENT_ORDER) + 1  # +1 for KERNEL_AGENT
 
 
 # Graph state
@@ -56,16 +62,19 @@ class State(TypedDict):
     total_nodes: int
     node_order: list[str]
 
+
 class UtilityState(TypedDict):
     INU: INUState
     KNU: float
     IDN: float
+
 
 class INUState(TypedDict):
     inu: float
     fepsde: FEPSDEState
     timing: TimingState
     explanation: str
+
 
 class FEPSDEState(TypedDict):
     financial: float
@@ -75,11 +84,13 @@ class FEPSDEState(TypedDict):
     digital: float
     ecological: float
 
+
 class TimingState(TypedDict):
     instant: float
     short: float
     medium: float
     long: float
+
 
 # Nodes
 def kernel_tool(state: State):
@@ -94,6 +105,7 @@ def kernel_tool(state: State):
         "kernel": "KERNEL DATA",
     }
 
+
 def meta_tool(state: State):
     """
     This tool is used to checks system coherence and enforces the processing sequence.
@@ -104,6 +116,7 @@ def meta_tool(state: State):
         **state,
         "meta": "META DATA",
     }
+
 
 def context_tool(state: State):
     """
@@ -119,6 +132,7 @@ def context_tool(state: State):
         **state,
         "context": response.content,
     }
+
 
 def inu_tool(state: State):
     """
@@ -139,6 +153,7 @@ def inu_tool(state: State):
         },
     }
 
+
 def knu_tool(state: State):
     """
     This tool is used to calculate collective utility of the user.
@@ -156,6 +171,7 @@ def knu_tool(state: State):
             "KNU": "KNU DATA",
         },
     }
+
 
 def idn_tool(state: State):
     """
@@ -175,6 +191,7 @@ def idn_tool(state: State):
         },
     }
 
+
 def awareness_tool(state: State):
     """
     This tool is used to calculate awareness of a person.
@@ -185,6 +202,7 @@ def awareness_tool(state: State):
         **state,
         "awareness": "AWARENESS DATA",
     }
+
 
 def willingness_tool(state: State):
     """
@@ -197,9 +215,10 @@ def willingness_tool(state: State):
         "willingness": "WILLINGNESS DATA",
     }
 
+
 def segment_tool(state: State):
     """
-    This tool is used to get behavioral mindset classification based on complete cognitive profile: utilities, awareness, journey, willingness and context.
+    This tool is used to simply classify behavioral segments based on the current outputs of AWX and WAX.
     """
     print("segment_tool called")
     # response = llm.invoke(f"Calculate segment of the following utilities: INU: {state['utilities']['INU']}, KNU: {state['utilities']['KNU']}, IDN: {state['utilities']['IDN']}")
@@ -207,6 +226,7 @@ def segment_tool(state: State):
         **state,
         "segment": "SEGMENT DATA",
     }
+
 
 def journey_tool(state: State):
     """
@@ -219,6 +239,7 @@ def journey_tool(state: State):
         "journey": "JOURNEY DATA",
     }
 
+
 def intervention_tool(state: State):
     """
     This tool is used to generates the recommended behavioral intervention for this situation.
@@ -230,6 +251,7 @@ def intervention_tool(state: State):
         "intervention": "INTERVENTION DATA",
     }
 
+
 def watchdog_tool(state: State):
     """
     This tool is used to detects missing values, errors, contradictions.
@@ -240,6 +262,7 @@ def watchdog_tool(state: State):
         **state,
         "validation": "VALIDATION DATA",
     }
+
 
 def check_graph_tool(state: State, workflow: StateGraph):
     total_nodes = len(workflow.nodes)
@@ -267,6 +290,7 @@ def check_graph_tool(state: State, workflow: StateGraph):
         "total_nodes": total_nodes,
     }
 
+
 def check_initialization(state: State):
     """Gate function to check if the initialization is successful."""
     print("check_initialization")
@@ -276,6 +300,7 @@ def check_initialization(state: State):
         return "Pass"
     print("Initialization failed, calling WATCHDOG_AGENT")
     return "Fail"
+
 
 # Build workflow
 workflow = StateGraph(State)
@@ -291,14 +316,19 @@ workflow.add_node("IDN_AGENT", idn_tool)
 workflow.add_node("AWX_AGENT", awareness_tool)
 workflow.add_node("JNY_AGENT", journey_tool)
 workflow.add_node("WAX_AGENT", willingness_tool)
+# TODO: add WTX_AGENT
 workflow.add_node("SEG_AGENT", segment_tool)
 workflow.add_node("INT_AGENT", intervention_tool)
 workflow.add_node("WATCHDOG_AGENT", watchdog_tool)
 
 # Add edges to connect nodes
-# KERNEL -> META -> CONTEXT -> INU -> KNU -> IDN -> AWX -> WA -> WTX -> SEG -> JNY -> INT -> WATCHDOG
+# KERNEL -> META -> CONTEXT -> INU -> KNU -> IDN -> AWX -> WAX -> SEG -> JNY -> INT -> WATCHDOG
 workflow.add_edge(START, "KERNEL_AGENT")
-workflow.add_conditional_edges("KERNEL_AGENT", check_initialization, {"Fail": "WATCHDOG_AGENT", "Pass": "META_AGENT"})
+workflow.add_conditional_edges(
+    "KERNEL_AGENT",
+    check_initialization,
+    {"Fail": "WATCHDOG_AGENT", "Pass": "META_AGENT"},
+)
 workflow.add_edge("META_AGENT", "CONTEXT_AGENT")
 # workflow.add_edge("CONTEXT_AGENT", END)
 
@@ -307,6 +337,7 @@ workflow.add_edge("INU_AGENT", "KNU_AGENT")
 workflow.add_edge("KNU_AGENT", "IDN_AGENT")
 workflow.add_edge("IDN_AGENT", "AWX_AGENT")
 workflow.add_edge("AWX_AGENT", "WAX_AGENT")
+# TODO: add WTX_AGENT
 workflow.add_edge("WAX_AGENT", "SEG_AGENT")
 workflow.add_edge("SEG_AGENT", "JNY_AGENT")
 workflow.add_edge("JNY_AGENT", "INT_AGENT")
