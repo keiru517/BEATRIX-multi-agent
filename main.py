@@ -14,13 +14,23 @@ from langchain_core.messages import (
 from dotenv import load_dotenv
 
 from prompt import (
+    KERNEL_AGENT_PROMPT,
+    META_AGENT_PROMPT,
     CONTEXT_AGENT_PROMPT,
     INU_AGENT_PROMPT,
     KNU_AGENT_PROMPT,
     IDN_AGENT_PROMPT,
+    AWX_AGENT_PROMPT,
+    WAX_AGENT_PROMPT,
+    SEG_AGENT_PROMPT,
+    JNY_AGENT_PROMPT,
+    INT_AGENT_PROMPT,
+    WATCHDOG_AGENT_PROMPT,
 )
-from states.graph_state import State
+from states import State
+
 # Load environment variables from .env file
+# TODO: need to get from environment variables
 load_dotenv()
 
 llm = ChatOpenAI(
@@ -47,21 +57,12 @@ AGENT_ORDER = [
 
 TOTAL_NODES = len(AGENT_ORDER) + 1  # +1 for KERNEL_AGENT
 
-
-# Graph state
-
-
-
 # Nodes
 def kernel_tool(state: State, workflow: StateGraph):
     total_nodes = len(workflow.nodes)
-    # You can update state or log the number
-    print(f"Total nodes: {total_nodes}")
 
-    # order of nodes
-    # Function to get order by traversing edges from START
+    # Get order of nodes by traversing edges from START
     order = []
-    visited = set()
     edges = workflow.edges  # list of (from_node, to_node) tuples
 
     edge_map = {from_node: to_node for (from_node, to_node) in edges}
@@ -74,33 +75,40 @@ def kernel_tool(state: State, workflow: StateGraph):
             break
         order.append(current_node)
 
-    return {
-        "node_order": order,
-        "total_nodes": total_nodes,
-    }
+    # TODO: need to do the validation of all the nodes as well
+
+    # Are all modules here and in the right order?
+    if total_nodes == TOTAL_NODES and order == AGENT_ORDER:
+        return {
+            **state,
+            "kernel": {
+                "initialised": True,
+            },
+            # kept this for the future reference
+            "node_order": order,
+            "total_nodes": total_nodes,
+        }
+    else:
+        return {
+            **state,
+            "kernel": {
+                "initialised": False,
+            },
+            # kept this for the future reference
+            "node_order": order,
+            "total_nodes": total_nodes,
+        }
 
 
-def kernel_tool_conditional(state: State):
+def meta_tool(state: State):
     """Gate function to check if the initialization is successful."""
-    print("kernel_tool_conditional")
+    print("meta_tool called")
     if state["total_nodes"] == TOTAL_NODES and state["node_order"] == AGENT_ORDER:
-        # TODO: need to do the validation of all the nodes as well
+        
         print("Initialization successful, calling META_AGENT")
         return "Pass"
     print("Initialization failed, calling WATCHDOG_AGENT")
     return "Fail"
-
-
-def meta_tool(state: State):
-    """
-    This tool is used to checks system coherence and enforces the processing sequence.
-    """
-    print("meta_tool called")
-    # response = llm.invoke(f"Generate meta-cognitive analysis of the following intervention: {state['intervention']}")
-    return {
-        **state,
-        "meta": "META DATA",
-    }
 
 
 def context_tool(state: State):
