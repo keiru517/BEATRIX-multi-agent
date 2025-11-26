@@ -95,7 +95,7 @@ def kernel_tool(state: State, workflow: StateGraph):
         return {
             **state,
             "kernel": {
-                "initialised": True,
+                "system_ready": True,
             },
             # kept this for the future reference
             "node_order": order,
@@ -105,7 +105,7 @@ def kernel_tool(state: State, workflow: StateGraph):
         return {
             **state,
             "kernel": {
-                "initialised": False,
+                "system_ready": False,
             },
             # kept this for the future reference
             "node_order": order,
@@ -118,9 +118,9 @@ def meta_tool(state: State):
     print("meta_tool called")
     if state["total_nodes"] == TOTAL_NODES and state["node_order"] == AGENT_ORDER:
         
-        print("Initialization successful, calling META_AGENT")
+        print("System ready, calling CONTEXT_AGENT")
         return "Pass"
-    print("Initialization failed, calling WATCHDOG_AGENT")
+    print("System not ready, calling WATCHDOG_AGENT")
     return "Fail"
 
 
@@ -282,7 +282,7 @@ workflow = StateGraph(State)
 
 # Add nodes
 workflow.add_node("KERNEL_AGENT", lambda state: kernel_tool(state, workflow))
-workflow.add_node("META_AGENT", meta_tool)
+# workflow.add_node("META_AGENT", meta_tool)
 workflow.add_node("CONTEXT_AGENT", context_tool)
 workflow.add_node("INU_AGENT", inu_tool)
 workflow.add_node("KNU_AGENT", knu_tool)
@@ -300,10 +300,10 @@ workflow.add_node("WATCHDOG_AGENT", watchdog_tool)
 workflow.add_edge(START, "KERNEL_AGENT")
 workflow.add_conditional_edges(
     "KERNEL_AGENT",
-    kernel_tool_conditional,
-    {"Fail": "WATCHDOG_AGENT", "Pass": "META_AGENT"},
+    meta_tool,
+    {"Fail": "WATCHDOG_AGENT", "Pass": "CONTEXT_AGENT"},
 )
-workflow.add_edge("META_AGENT", "CONTEXT_AGENT")
+# workflow.add_edge("META_AGENT", "CONTEXT_AGENT")
 # workflow.add_edge("CONTEXT_AGENT", END)
 
 workflow.add_edge("CONTEXT_AGENT", "INU_AGENT")
