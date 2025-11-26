@@ -93,17 +93,42 @@ class TimingState(TypedDict):
 
 
 # Nodes
-def kernel_tool(state: State):
-    """
-    This tool is used to initialize, validate, and activate all other modules within the BEATRIX / BCM 2.0 architecture.
-    It ensures structural integrity, version compliance, and execution order before any agent becomes active.
-    """
-    print("KERNEL_tool called")
-    # response = llm.invoke(f"Generate meta-cognitive analysis of the following intervention: {state['intervention']}")
+def kernel_tool(state: State, workflow: StateGraph):
+    total_nodes = len(workflow.nodes)
+    # You can update state or log the number
+    print(f"Total nodes: {total_nodes}")
+
+    # order of nodes
+    # Function to get order by traversing edges from START
+    order = []
+    visited = set()
+    edges = workflow.edges  # list of (from_node, to_node) tuples
+
+    edge_map = {from_node: to_node for (from_node, to_node) in edges}
+
+    order = [START_NODE]
+    current_node = START_NODE
+    while current_node != END_NODE:
+        current_node = edge_map.get(current_node)
+        if current_node == END_NODE:
+            break
+        order.append(current_node)
+
     return {
-        **state,
-        "kernel": "KERNEL DATA",
+        "node_order": order,
+        "total_nodes": total_nodes,
     }
+
+
+def kernel_tool_conditional(state: State):
+    """Gate function to check if the initialization is successful."""
+    print("kernel_tool_conditional")
+    if state["total_nodes"] == TOTAL_NODES and state["node_order"] == AGENT_ORDER:
+        # TODO: need to do the validation of all the nodes as well
+        print("Initialization successful, calling META_AGENT")
+        return "Pass"
+    print("Initialization failed, calling WATCHDOG_AGENT")
+    return "Fail"
 
 
 def meta_tool(state: State):
@@ -230,7 +255,8 @@ def segment_tool(state: State):
 
 def journey_tool(state: State):
     """
-    This tool is used to calculate journey of the context.
+    This tool generates a structured path that shows how actors move from one behavioral state to 
+    another, based on awareness, willingness, and context.
     """
     print("journey_tool called")
     # response = llm.invoke(f"Calculate journey of the following utilities: INU: {state['utilities']['INU']}, KNU: {state['utilities']['KNU']}, IDN: {state['utilities']['IDN']}")
@@ -242,7 +268,9 @@ def journey_tool(state: State):
 
 def intervention_tool(state: State):
     """
-    This tool is used to generates the recommended behavioral intervention for this situation.
+    This tool converts the behavioral journey outputs into structured intervention guidelines —
+    showing what kind of action or measure is most effective to move the actor from 
+    the current to the next behavioral phase.
     """
     print("intervention_tool called")
     # response = llm.invoke(f"Calculate intervention of the following utilities: INU: {state['utilities']['INU']}, KNU: {state['utilities']['KNU']}, IDN: {state['utilities']['IDN']}")
@@ -254,7 +282,10 @@ def intervention_tool(state: State):
 
 def watchdog_tool(state: State):
     """
-    This tool is used to detects missing values, errors, contradictions.
+    This tool continuously monitors the BEATRIX architecture to ensure that all 
+    modules are running correctly, in the right order, and with coherent outputs.
+    It doesn't adapt or learn yet — it simply validates structure, integrity, and 
+    coherence at runtime.
     """
     print("watchdog_tool called")
     # response = llm.invoke(f"Validate the following intervention: {state['intervention']}")
@@ -264,50 +295,12 @@ def watchdog_tool(state: State):
     }
 
 
-def check_graph_tool(state: State, workflow: StateGraph):
-    total_nodes = len(workflow.nodes)
-    # You can update state or log the number
-    print(f"Total nodes: {total_nodes}")
-
-    # order of nodes
-    # Function to get order by traversing edges from START
-    order = []
-    visited = set()
-    edges = workflow.edges  # list of (from_node, to_node) tuples
-
-    edge_map = {from_node: to_node for (from_node, to_node) in edges}
-
-    order = [START_NODE]
-    current_node = START_NODE
-    while current_node != END_NODE:
-        current_node = edge_map.get(current_node)
-        if current_node == END_NODE:
-            break
-        order.append(current_node)
-
-    return {
-        "node_order": order,
-        "total_nodes": total_nodes,
-    }
-
-
-def check_initialization(state: State):
-    """Gate function to check if the initialization is successful."""
-    print("check_initialization")
-    if state["total_nodes"] == TOTAL_NODES and state["node_order"] == AGENT_ORDER:
-        # TODO: need to do the validation of all the nodes as well
-        print("Initialization successful, calling META_AGENT")
-        return "Pass"
-    print("Initialization failed, calling WATCHDOG_AGENT")
-    return "Fail"
-
-
 # Build workflow
 workflow = StateGraph(State)
 
 
 # Add nodes
-workflow.add_node("KERNEL_AGENT", lambda state: check_graph_tool(state, workflow))
+workflow.add_node("KERNEL_AGENT", lambda state: kernel_tool(state, workflow))
 workflow.add_node("META_AGENT", meta_tool)
 workflow.add_node("CONTEXT_AGENT", context_tool)
 workflow.add_node("INU_AGENT", inu_tool)
@@ -326,7 +319,7 @@ workflow.add_node("WATCHDOG_AGENT", watchdog_tool)
 workflow.add_edge(START, "KERNEL_AGENT")
 workflow.add_conditional_edges(
     "KERNEL_AGENT",
-    check_initialization,
+    kernel_tool_conditional,
     {"Fail": "WATCHDOG_AGENT", "Pass": "META_AGENT"},
 )
 workflow.add_edge("META_AGENT", "CONTEXT_AGENT")
