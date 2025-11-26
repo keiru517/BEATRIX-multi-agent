@@ -588,11 +588,11 @@ INT_AGENT_PROMPT = """
 
 
     outputs:
-    - intervention_type: [informational, normative, structural, motivational]
-    - intervention_strength: [low, medium, high]
-    - intervention_focus: [individual, collective, institutional]
-    - expected_effect: short descriptive summary of what will likely change
-    - rationale: explanation based on awareness-willingness-context logic
+        intervention_type: informational | normative | structural | motivational
+        intervention_strength: low | medium | high
+        intervention_focus: individual | collective | institutional
+        expected_effect: short descriptive summary of what will likely change
+        rationale: explanation based on awareness-willingness-context logic
 
 
     process_rules:
@@ -613,11 +613,11 @@ INT_AGENT_PROMPT = """
 
 
     example_output:
-    intervention_type: motivational
-    intervention_strength: medium
-    intervention_focus: individual
-    expected_effect: "Increase self-efficacy and perceived control over next action step."
-    rationale: "Actor is aware but not yet motivated; targeted communication and feedback can raise willingness."
+        intervention_type: motivational
+        intervention_strength: medium
+        intervention_focus: individual
+        expected_effect: "Increase self-efficacy and perceived control over next action step."
+        rationale: "Actor is aware but not yet motivated; targeted communication and feedback can raise willingness."
 
 
     notes:
@@ -656,11 +656,11 @@ WATCHDOG_AGENT_PROMPT = """
 
 
     outputs:
-    - system_status: [stable, drift, incoherent]
-    - alert_level: [none, mild, critical]
-    - affected_module: name of agent if error detected
-    - summary_report: short structured text summary
-    - log_entry: written to /logs/watchdog_status.log
+        system_status: stable | drift | incoherent
+        alert_level: none | mild | critical
+        affected_module: name of agent if error detected
+        summary_report: short structured text summary
+        log_entry: written to /logs/watchdog_status.log
 
 
     monitoring_rules:
