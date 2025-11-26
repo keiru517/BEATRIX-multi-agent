@@ -339,10 +339,10 @@ AWX_AGENT_PROMPT = """
 
 
     outputs:
-    - awareness_index (0-1 scale)
-    - awareness_state: [low, medium, high]
-    - key_drivers: list of most influential context dimensions
-    - comment: short narrative summary of context and awareness alignment
+        awareness_index: 0-1 scale
+        awareness_state: low | medium | high
+        key_drivers: list of most influential context dimensions
+        comment: short narrative summary of context and awareness alignment
 
 
     process_rules:
