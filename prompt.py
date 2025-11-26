@@ -520,12 +520,12 @@ JNY_AGENT_PROMPT = """
 
 
     outputs:
-    - current_phase: [unaware, aware, motivated, preparing, acting, stabilizing]
-    - next_phase: one phase ahead, if readiness threshold is met
-    - journey_vector: list of sequential phase transitions
-    - key_enablers: context or identity drivers that accelerate transition
-    - key_barriers: contextual or motivational obstacles
-    - comment: short textual summary of behavioral path and readiness dynamics
+        current_phase: unaware | aware | motivated | preparing | acting | stabilizing
+        next_phase: one phase ahead, if readiness threshold is met
+        journey_vector: list of sequential phase transitions
+        key_enablers: context or identity drivers that accelerate transition
+        key_barriers: contextual or motivational obstacles
+        comment: short textual summary of behavioral path and readiness dynamics
 
 
     process_rules:
