@@ -1,16 +1,31 @@
 from typing_extensions import TypedDict
+from states.meta_state import MetaState
+from states.context_state import ContextState
+from states.inu_state import INUState
+from states.knu_state import KNUState
+from states.idn_state import IDNState
+from states.awx_state import AWXState
+from states.wax_state import WAXState
+from states.seg_state import SEGState
+from states.jny_state import JNYState
+from states.int_state import INTState
+from states.watchdog_state import WatchdogState
 
 class State(TypedDict):
     user_message: str
-    context: str
-    awareness: float
-    journey: float
-    willingness: float
-    segment: float
-    intervention: float
-    validation: float
     total_nodes: int
     node_order: list[str]
+    meta: MetaState
+    context: ContextState
+    inu: INUState
+    knu: KNUState
+    idn: IDNState
+    awx: AWXState
+    wax: WAXState
+    seg: SEGState
+    jny: JNYState
+    int: INTState
+    watchdog: WatchdogState
 
 
 
