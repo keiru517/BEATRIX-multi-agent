@@ -177,13 +177,25 @@ INU_AGENT_PROMPT = """
 
     3. Timing Layer (Instant / Short / Medium / Long)
 
-    You must integrate the BCM timing structure:
-    timing = {
-        "instant": 0.xx,
-        "short": 0.xx,
-        "medium": 0.xx,
-        "long": 0.xx
-    }
+    You must integrate the BCM timing structure
+    Compute timing weights from CQI (0.00-1.00):
+     - Compute raw timing values:
+        instant = 0.4 * (1 - CQI)
+        short   = 0.3 * CQI
+        medium  = 0.2 * CQI * 1.2
+        long    = 0.1 * CQI * 2
+     - Normalize to sum to 1:
+        instant = instant / (instant + short + medium + long)
+        short   = short / (instant + short + medium + long)
+        medium  = medium / (instant + short + medium + long)
+        long    = long / (instant + short + medium + long)
+    - Assign to timing profile:
+        timing = {
+            "instant": instant,
+            "short": short,
+            "medium": medium,
+            "long": long
+        }
     Rules:
     • Values must sum to 1.
     • Instant effects usually weigh strongest (present-bias).

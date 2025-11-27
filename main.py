@@ -187,13 +187,10 @@ def inu_tool(state: State):
 
     # TODO: if context_state != active, do not calculation
 
+    input_from_kon = f"Here is the context vector from KON: {json.dumps(state['context']['context_vector'])} and CQI: {state['context']['cqi']}"
     messages = [
         SystemMessage(content=INU_AGENT_PROMPT),
-        HumanMessage(
-            content=state["user_message"]
-            + " "
-            + f"Here is the context vector from KON: {json.dumps(state['context']['context_vector'])}"
-        ),
+        HumanMessage(content=state["user_message"] + "\n" + input_from_kon),
     ]
     response = llm.invoke(messages)
     print(response.content, type(response.content))
