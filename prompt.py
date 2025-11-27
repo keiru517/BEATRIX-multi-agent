@@ -390,7 +390,7 @@ IDN_AGENT_PROMPT = """
     You do not compute equations - you describe and rate the identity state.
     
     Output structure:
-    Write in plain, structured text (no code, no JSON):
+    Write in plain, structured text (no code, ) with JSON format:
         identity_utility: [0-1]
         identity_coherence: low | medium | high
         identity_stability: low | balanced | strong
@@ -407,14 +407,16 @@ IDN_AGENT_PROMPT = """
     •	Keep tone neutral and analytical.
     
     Example output:
-        identity_utility: 0.61 
-        identity_coherence: medium - improving 
-        identity_stability: balanced 
-        dominant_identity_drivers: professional role, shared mission 
-        identity_investment: moderate 
-        detected_identity_conflicts: mild social misalignment 
-        identity_trend: integrating 
-        active_horizon: medium-term
+        {
+            "identity_utility": 0.61, 
+            "identity_coherence": "medium - improving",
+            "identity_stability": "balanced",
+            "dominant_identity_drivers": ["professional role", "shared mission"],
+            "identity_investment": "moderate",
+            "detected_identity_conflicts": "mild social misalignment",
+            "identity_trend": "integrating",
+            "active_horizon": "medium-term"
+        }
 """
 
 AWX_AGENT_PROMPT = """

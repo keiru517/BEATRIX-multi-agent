@@ -225,19 +225,20 @@ def knu_tool(state: State):
 
 def idn_tool(state: State):
     """
-    This tool is used to calculate identity utility of the user.
+    This tool is used to describe how identity, belonging, and self-concept contribute to value creation.
     """
-    print("idn_tool called")
+    print("IDN_AGENT called")
+
+    input_data = f"Here is the INU data, KNU data and KON data: {json.dumps(state['inu'])} and {json.dumps(state['knu'])} and {json.dumps(state['context'])}"
     messages = [
         SystemMessage(content=IDN_AGENT_PROMPT),
-        AIMessage(content=state["context"]),
-        HumanMessage(content=state["user_message"]),
+        HumanMessage(content=input_data),
     ]
     response = llm.invoke(messages)
     return {
         **state,
-        "utilities": {
-            "IDN": "IDN DATA",
+        "idn": {
+            **json.loads(response.content),
         },
     }
 
@@ -352,8 +353,8 @@ workflow.add_edge("META_AGENT", "CONTEXT_AGENT")
 
 workflow.add_edge("CONTEXT_AGENT", "INU_AGENT")
 workflow.add_edge("INU_AGENT", "KNU_AGENT")
-workflow.add_edge("KNU_AGENT", END)
-# workflow.add_edge("KNU_AGENT", "IDN_AGENT")
+workflow.add_edge("KNU_AGENT", "IDN_AGENT")
+workflow.add_edge("IDN_AGENT", END)
 # workflow.add_edge("IDN_AGENT", "AWX_AGENT")
 # workflow.add_edge("AWX_AGENT", "WAX_AGENT")
 # # TODO: add WTX_AGENT
