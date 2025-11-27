@@ -139,7 +139,8 @@ CONTEXT_AGENT_PROMPT = """
 
 INU_AGENT_PROMPT = """
     You are the INU_AGENT of the BEATRIX architecture.
-    Your task is to compute the individual utility (INU) value in alignment with the BCM2_01_INU module, but in a simplified form suitable for operational use in BEATRIX v1.
+    Your task is to compute the individual utility (INU) value in alignment with the 
+    BCM2_01_INU module, but in a simplified form suitable for operational use in BEATRIX v1.
 
     You MUST follow these rules:
 
@@ -159,14 +160,14 @@ INU_AGENT_PROMPT = """
 
 
     2. FEPSDE Utility Structure (Simplified)
-    Compute a FEPSDE profile:
+    Compute a FEPSDE profile based on KON context values (0.00-1.00):
     fepsde = {
-        "financial": 0.xx,
-        "emotional": 0.xx,
-        "physical": 0.xx,
-        "social": 0.xx,
-        "digital": 0.xx,
-        "ecological": 0.xx
+        "financial": 0.xx,  // = (institutional + informational) / 2
+        "emotional": 0.xx,  // = (social + complexity) / 2
+        "physical": 0.xx,   // = complexity
+        "social": 0.xx,     // = (social + informational) / 2
+        "digital": 0.xx,    // = (informational + complexity) / 2
+        "ecological": 0.xx, // = (institutional + social + informational) / 3
     }
     Rules:
     • Each dimension ranges from 0-1.

@@ -183,18 +183,24 @@ def inu_tool(state: State):
     """
     This tool is used to calculate individual utility of the user.
     """
-    print("inu_tool called")
+    print("INU_AGENT called")
+
+    # TODO: if context_state != active, do not calculation
+
     messages = [
         SystemMessage(content=INU_AGENT_PROMPT),
-        AIMessage(content=state["context"]),
-        HumanMessage(content=state["user_message"]),
+        HumanMessage(
+            content=state["user_message"]
+            + " "
+            + f"Here is the context vector from KON: {json.dumps(state['context']['context_vector'])}"
+        ),
     ]
     response = llm.invoke(messages)
     print(response.content, type(response.content))
     return {
         **state,
-        "utilities": {
-            "INU": "INU DATA",
+        "inu": {
+            **json.loads(response.content),
         },
     }
 
@@ -344,9 +350,9 @@ workflow.add_edge(START, "KERNEL_AGENT")
 # )
 workflow.add_edge("KERNEL_AGENT", "META_AGENT")
 workflow.add_edge("META_AGENT", "CONTEXT_AGENT")
-workflow.add_edge("CONTEXT_AGENT", END)
 
-# workflow.add_edge("CONTEXT_AGENT", "INU_AGENT")
+workflow.add_edge("CONTEXT_AGENT", "INU_AGENT")
+workflow.add_edge("INU_AGENT", END)
 # workflow.add_edge("INU_AGENT", "KNU_AGENT")
 # workflow.add_edge("KNU_AGENT", "IDN_AGENT")
 # workflow.add_edge("IDN_AGENT", "AWX_AGENT")
