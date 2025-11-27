@@ -1,5 +1,6 @@
 from typing_extensions import TypedDict
 
+
 class MetaState(TypedDict):
     meta_axiom_version: str
     kernel_status: str

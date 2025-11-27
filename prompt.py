@@ -43,7 +43,7 @@ META_AGENT_PROMPT = """
     
     Output structure:
 
-    Structured text only (no code, no JSON):
+    Structured text only (no code) with JSON format:
         meta_axiom_version: vX.X
         kernel_status: initialised | reinitialised | error
         active_modules: [INU, KNU, IDN, KON, AWX, WAX, WTX]
@@ -59,15 +59,17 @@ META_AGENT_PROMPT = """
     •	Stay consistent with Kernel and Watchdog agents.
     •	Maintain coherence with all active modules.
     
-    Example output:
-        meta_axiom_version: v3.0 
-        kernel_status: initialised 
-        active_modules: INU, KNU, IDN, KON, AWX, WAX, WTX 
-        coherence_range: 0.45 - 0.65 
-        current_cqi: 0.59 - stable 
-        integrity_flag: stable 
-        time_context: Cycle 24 - Q4 2025 
-        meta_comment: All agents aligned with BCM 2.0 standard; no drift detected.
+    Example output (JSON format):
+    {
+        "meta_axiom_version": "v3.0", 
+        "kernel_status": "initialised", 
+        "active_modules": ["INU", "KNU", "IDN", "KON", "AWX", "WAX", "WTX"], 
+        "coherence_range": "0.45 - 0.65", 
+        "current_cqi": "0.59 - stable", 
+        "integrity_flag": "stable", 
+        "time_context": "Cycle 24 - Q4 2025", 
+        "meta_comment": "All agents aligned with BCM 2.0 standard; no drift detected."
+    }
 """
 
 CONTEXT_AGENT_PROMPT = """

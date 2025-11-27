@@ -1,5 +1,6 @@
 from typing import TypedDict
 
+
 class INUState(TypedDict):
     inu: float
     fepsde: FEPSDEState

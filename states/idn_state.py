@@ -1,5 +1,6 @@
 from typing import TypedDict
 
+
 class IDNState(TypedDict):
     identity_utility: float
     identity_coherence: str

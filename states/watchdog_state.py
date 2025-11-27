@@ -1,5 +1,6 @@
 from typing import TypedDict
 
+
 class WatchdogState(TypedDict):
     system_status: str
     alert_level: str

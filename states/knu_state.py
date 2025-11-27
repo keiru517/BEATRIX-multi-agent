@@ -1,5 +1,6 @@
 from typing import TypedDict
 
+
 class KNUState(TypedDict):
     collective_utility: float
     group_alignment: str

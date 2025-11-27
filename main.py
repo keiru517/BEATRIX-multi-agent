@@ -1,6 +1,6 @@
 import os
 import json
-
+from datetime import datetime
 
 from langgraph.graph import StateGraph, START, END
 
@@ -34,7 +34,7 @@ from states import State
 load_dotenv()
 
 llm = ChatOpenAI(
-    model="gpt-5",
+    model="gpt-3.5-turbo",
     temperature=0.3,
     api_key=os.getenv("OPENAI_API_KEY"),
 )
@@ -57,6 +57,7 @@ AGENT_ORDER = [
 
 TOTAL_NODES = len(AGENT_ORDER) + 1  # +1 for KERNEL_AGENT
 
+
 # Nodes
 def kernel_tool(state: State, workflow: StateGraph):
     """
@@ -72,11 +73,13 @@ def kernel_tool(state: State, workflow: StateGraph):
         • On failure → WATCHDOG_AGENT (error capture)
     """
 
+    print("kernel_tool called")
     total_nodes = len(workflow.nodes)
 
     # Get order of nodes by traversing edges from START
     order = []
     edges = workflow.edges  # list of (from_node, to_node) tuples
+    print(f"kernel_tool: edges: {edges}")
 
     edge_map = {from_node: to_node for (from_node, to_node) in edges}
 
@@ -84,44 +87,65 @@ def kernel_tool(state: State, workflow: StateGraph):
     current_node = START_NODE
     while current_node != END_NODE:
         current_node = edge_map.get(current_node)
-        if current_node == END_NODE:
+        if current_node == END_NODE or current_node is None:
             break
         order.append(current_node)
 
     # TODO: need to do the validation of all the nodes as well
 
+    print(
+        f"kernel_tool: total nodes: {total_nodes}, TOTAL_NODES: {TOTAL_NODES}, order: {order}, AGENT_ORDER: {AGENT_ORDER}"
+    )
     # Are all modules here and in the right order?
     if total_nodes == TOTAL_NODES and order == AGENT_ORDER:
+        print("kernel_tool: all modules are here and in the right order")
         return {
             **state,
             "kernel": {
                 "system_ready": True,
+                "agents_registered": order,
+                "version_info": "v1.0",  # TODO: need to get the version info from the kernel
+                "kernel_timestamp": datetime.now().isoformat(),
             },
-            # kept this for the future reference
-            "node_order": order,
-            "total_nodes": total_nodes,
         }
     else:
+        print("kernel_tool: all modules are not here or in the right order")
         return {
             **state,
             "kernel": {
                 "system_ready": False,
+                "agents_registered": order,
+                "version_info": "v1.0",  # TODO: need to get the version info from the kernel
+                "kernel_timestamp": datetime.now().isoformat(),
             },
-            # kept this for the future reference
-            "node_order": order,
-            "total_nodes": total_nodes,
         }
 
 
 def meta_tool(state: State):
     """Gate function to check if the initialization is successful."""
     print("meta_tool called")
-    if state["total_nodes"] == TOTAL_NODES and state["node_order"] == AGENT_ORDER:
-        
-        print("System ready, calling CONTEXT_AGENT")
-        return "Pass"
-    print("System not ready, calling WATCHDOG_AGENT")
-    return "Fail"
+
+    kernel_result = (
+        f"Kernel status: {state['kernel']['system_ready']}\n"
+        f"Agents registered: {', '.join(state['kernel']['agents_registered'])}\n"
+        f"Version info: {state['kernel']['version_info']}\n"
+        f"Kernel timestamp: {state['kernel']['kernel_timestamp']}"
+    )
+
+    response = llm.invoke(
+        [
+            SystemMessage(content=META_AGENT_PROMPT),
+            HumanMessage(content=f"Here is the kernel result: {kernel_result}"),
+        ]
+    )
+    content = json.loads(response.content)
+    print(f"meta_tool: content: {content}")
+    return {
+        **state,
+        "meta": {
+            **content,
+        },
+    }
 
 
 def context_tool(state: State):
@@ -236,7 +260,7 @@ def segment_tool(state: State):
 
 def journey_tool(state: State):
     """
-    This tool generates a structured path that shows how actors move from one behavioral state to 
+    This tool generates a structured path that shows how actors move from one behavioral state to
     another, based on awareness, willingness, and context.
     """
     print("journey_tool called")
@@ -250,7 +274,7 @@ def journey_tool(state: State):
 def intervention_tool(state: State):
     """
     This tool converts the behavioral journey outputs into structured intervention guidelines —
-    showing what kind of action or measure is most effective to move the actor from 
+    showing what kind of action or measure is most effective to move the actor from
     the current to the next behavioral phase.
     """
     print("intervention_tool called")
@@ -263,9 +287,9 @@ def intervention_tool(state: State):
 
 def watchdog_tool(state: State):
     """
-    This tool continuously monitors the BEATRIX architecture to ensure that all 
+    This tool continuously monitors the BEATRIX architecture to ensure that all
     modules are running correctly, in the right order, and with coherent outputs.
-    It doesn't adapt or learn yet — it simply validates structure, integrity, and 
+    It doesn't adapt or learn yet — it simply validates structure, integrity, and
     coherence at runtime.
     """
     print("watchdog_tool called")
@@ -282,7 +306,7 @@ workflow = StateGraph(State)
 
 # Add nodes
 workflow.add_node("KERNEL_AGENT", lambda state: kernel_tool(state, workflow))
-# workflow.add_node("META_AGENT", meta_tool)
+workflow.add_node("META_AGENT", meta_tool)
 workflow.add_node("CONTEXT_AGENT", context_tool)
 workflow.add_node("INU_AGENT", inu_tool)
 workflow.add_node("KNU_AGENT", knu_tool)
@@ -298,25 +322,26 @@ workflow.add_node("WATCHDOG_AGENT", watchdog_tool)
 # Add edges to connect nodes
 # KERNEL -> META -> CONTEXT -> INU -> KNU -> IDN -> AWX -> WAX -> SEG -> JNY -> INT -> WATCHDOG
 workflow.add_edge(START, "KERNEL_AGENT")
-workflow.add_conditional_edges(
-    "KERNEL_AGENT",
-    meta_tool,
-    {"Fail": "WATCHDOG_AGENT", "Pass": "CONTEXT_AGENT"},
-)
-# workflow.add_edge("META_AGENT", "CONTEXT_AGENT")
-# workflow.add_edge("CONTEXT_AGENT", END)
+# workflow.add_conditional_edges(
+#     "KERNEL_AGENT",
+#     meta_tool,
+#     {"Fail": "WATCHDOG_AGENT", "Pass": "CONTEXT_AGENT"},
+# )
+workflow.add_edge("KERNEL_AGENT", "META_AGENT")
+workflow.add_edge("META_AGENT", "CONTEXT_AGENT")
+workflow.add_edge("CONTEXT_AGENT", END)
 
-workflow.add_edge("CONTEXT_AGENT", "INU_AGENT")
-workflow.add_edge("INU_AGENT", "KNU_AGENT")
-workflow.add_edge("KNU_AGENT", "IDN_AGENT")
-workflow.add_edge("IDN_AGENT", "AWX_AGENT")
-workflow.add_edge("AWX_AGENT", "WAX_AGENT")
-# TODO: add WTX_AGENT
-workflow.add_edge("WAX_AGENT", "SEG_AGENT")
-workflow.add_edge("SEG_AGENT", "JNY_AGENT")
-workflow.add_edge("JNY_AGENT", "INT_AGENT")
-workflow.add_edge("INT_AGENT", "WATCHDOG_AGENT")
-workflow.add_edge("WATCHDOG_AGENT", END)
+# workflow.add_edge("CONTEXT_AGENT", "INU_AGENT")
+# workflow.add_edge("INU_AGENT", "KNU_AGENT")
+# workflow.add_edge("KNU_AGENT", "IDN_AGENT")
+# workflow.add_edge("IDN_AGENT", "AWX_AGENT")
+# workflow.add_edge("AWX_AGENT", "WAX_AGENT")
+# # TODO: add WTX_AGENT
+# workflow.add_edge("WAX_AGENT", "SEG_AGENT")
+# workflow.add_edge("SEG_AGENT", "JNY_AGENT")
+# workflow.add_edge("JNY_AGENT", "INT_AGENT")
+# workflow.add_edge("INT_AGENT", "WATCHDOG_AGENT")
+# workflow.add_edge("WATCHDOG_AGENT", END)
 
 
 # Compile

@@ -1,5 +1,6 @@
 from typing import TypedDict
 
+
 class AWXState(TypedDict):
     awareness_index: float
     awareness_state: str

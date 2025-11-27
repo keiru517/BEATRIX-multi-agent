@@ -13,6 +13,7 @@ from states.jny_state import JNYState
 from states.int_state import INTState
 from states.watchdog_state import WatchdogState
 
+
 class State(TypedDict):
     user_message: str
     total_nodes: int
