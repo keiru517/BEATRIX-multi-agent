@@ -119,7 +119,7 @@ def kernel_tool(state: State, workflow: StateGraph):
 
 def meta_tool(state: State):
     """Gate function to check if the initialization is successful."""
-    print("meta_tool called")
+    print("META_AGENT called")
 
     kernel_result = (
         f"Kernel status: {state['kernel']['system_ready']}\n"
@@ -151,7 +151,7 @@ def context_tool(state: State):
     """
     print("CONTEXT_AGENT called")
 
-    input = {
+    input_data = {
         "kernel_status": state["meta"]["kernel_status"],
         "user_message": state["user_message"],
         # TODO: this data might comes from the user at the beginning.
@@ -166,7 +166,7 @@ def context_tool(state: State):
     response = llm.invoke(
         [
             SystemMessage(content=CONTEXT_AGENT_PROMPT),
-            HumanMessage(content=json.dumps(input)),
+            HumanMessage(content=json.dumps(input_data)),
         ]
     )
     content = json.loads(response.content)
@@ -186,14 +186,15 @@ def inu_tool(state: State):
     print("INU_AGENT called")
 
     # TODO: if context_state != active, do not calculation
+    # TODO: if cqi < 0.3, trigger WATCHDOG_AGENT
 
-    input_from_kon = f"Here is the context vector from KON: {json.dumps(state['context']['context_vector'])} and CQI: {state['context']['cqi']}"
+    input_data = f"Here is the context vector from KON: {json.dumps(state['context']['context_vector'])} and CQI: {state['context']['cqi']}"
     messages = [
         SystemMessage(content=INU_AGENT_PROMPT),
-        HumanMessage(content=state["user_message"] + "\n" + input_from_kon),
+        HumanMessage(content=state["user_message"] + "\n" + input_data),
     ]
     response = llm.invoke(messages)
-    print(response.content, type(response.content))
+
     return {
         **state,
         "inu": {
@@ -206,17 +207,18 @@ def knu_tool(state: State):
     """
     This tool is used to calculate collective utility of the user.
     """
-    print("knu_tool called")
+    print("KNU_AGENT called")
+
+    input_data = f"Here is the INU data and context vector from KON: {json.dumps(state['inu'])} and {json.dumps(state['context']['context_vector'])}"
     messages = [
         SystemMessage(content=KNU_AGENT_PROMPT),
-        AIMessage(content=state["context"]),
-        HumanMessage(content=state["user_message"]),
+        HumanMessage(content=input_data),
     ]
     response = llm.invoke(messages)
     return {
         **state,
-        "utilities": {
-            "KNU": "KNU DATA",
+        "knu": {
+            **json.loads(response.content),
         },
     }
 
@@ -349,8 +351,8 @@ workflow.add_edge("KERNEL_AGENT", "META_AGENT")
 workflow.add_edge("META_AGENT", "CONTEXT_AGENT")
 
 workflow.add_edge("CONTEXT_AGENT", "INU_AGENT")
-workflow.add_edge("INU_AGENT", END)
-# workflow.add_edge("INU_AGENT", "KNU_AGENT")
+workflow.add_edge("INU_AGENT", "KNU_AGENT")
+workflow.add_edge("KNU_AGENT", END)
 # workflow.add_edge("KNU_AGENT", "IDN_AGENT")
 # workflow.add_edge("IDN_AGENT", "AWX_AGENT")
 # workflow.add_edge("AWX_AGENT", "WAX_AGENT")
