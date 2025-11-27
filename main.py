@@ -73,13 +73,12 @@ def kernel_tool(state: State, workflow: StateGraph):
         • On failure → WATCHDOG_AGENT (error capture)
     """
 
-    print("kernel_tool called")
+    print("KERNEL_AGENT called")
     total_nodes = len(workflow.nodes)
 
     # Get order of nodes by traversing edges from START
     order = []
     edges = workflow.edges  # list of (from_node, to_node) tuples
-    print(f"kernel_tool: edges: {edges}")
 
     edge_map = {from_node: to_node for (from_node, to_node) in edges}
 
@@ -93,9 +92,6 @@ def kernel_tool(state: State, workflow: StateGraph):
 
     # TODO: need to do the validation of all the nodes as well
 
-    print(
-        f"kernel_tool: total nodes: {total_nodes}, TOTAL_NODES: {TOTAL_NODES}, order: {order}, AGENT_ORDER: {AGENT_ORDER}"
-    )
     # Are all modules here and in the right order?
     if total_nodes == TOTAL_NODES and order == AGENT_ORDER:
         print("kernel_tool: all modules are here and in the right order")
@@ -113,7 +109,7 @@ def kernel_tool(state: State, workflow: StateGraph):
         return {
             **state,
             "kernel": {
-                "system_ready": False,
+                "system_ready": True,
                 "agents_registered": order,
                 "version_info": "v1.0",  # TODO: need to get the version info from the kernel
                 "kernel_timestamp": datetime.now().isoformat(),
@@ -139,7 +135,7 @@ def meta_tool(state: State):
         ]
     )
     content = json.loads(response.content)
-    print(f"meta_tool: content: {content}")
+
     return {
         **state,
         "meta": {
@@ -150,17 +146,36 @@ def meta_tool(state: State):
 
 def context_tool(state: State):
     """
-    This tool is used to handle the context to convert reduced context vector.
+    This tool is used to Transform a contextual input (provided as structured JSON) into
+    a simplified 4-dimensional context modulation vector.
     """
-    print("context_tool called")
-    messages = [
-        SystemMessage(content=CONTEXT_AGENT_PROMPT),
-        HumanMessage(content=state["user_message"]),
-    ]
-    response = llm.invoke(messages)
+    print("CONTEXT_AGENT called")
+
+    input = {
+        "kernel_status": state["meta"]["kernel_status"],
+        "user_message": state["user_message"],
+        # TODO: this data might comes from the user at the beginning.
+        "environment": {
+            "institutional": 0.82,
+            "social": 0.58,
+            "informational": "medium",
+            "complexity": "very high",
+        },
+    }
+
+    response = llm.invoke(
+        [
+            SystemMessage(content=CONTEXT_AGENT_PROMPT),
+            HumanMessage(content=json.dumps(input)),
+        ]
+    )
+    content = json.loads(response.content)
+
     return {
         **state,
-        "context": response.content,
+        "context": {
+            **content,
+        },
     }
 
 
