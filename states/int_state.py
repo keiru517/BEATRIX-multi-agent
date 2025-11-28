@@ -2,8 +2,8 @@ from typing import TypedDict
 
 
 class INTState(TypedDict):
-    intervention_type: str
-    intervention_strength: str
-    intervention_focus: str
-    expected_effect: str
-    rationale: str
+    intervention_effect_index: float
+    reactance_index: float
+    complementarity_score: float
+    intervention_state: str
+    intervention_comment: str

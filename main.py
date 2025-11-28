@@ -404,10 +404,29 @@ def intervention_tool(state: State):
     the current to the next behavioral phase.
     """
     print("intervention_tool called")
-    # response = llm.invoke(f"Calculate intervention of the following utilities: INU: {state['utilities']['INU']}, KNU: {state['utilities']['KNU']}, IDN: {state['utilities']['IDN']}")
+
+    input_data = f"""Here is the input data.
+    intervention_type: "nudge",
+    fepsde_focus: {state["inu"]["fepsde"]},
+    journey_phase: "trigger",
+    context_vector: {json.dumps(state['context']['context_vector'])}
+    awareness_level: {state['awx']['awareness_level']}
+    willingness_level: {state['wax']['willingness_level']}
+    risk_factor: {state["wtx"]["risk_factor"]},
+    uncertainty_factor: {state["wtx"]["uncertainty_factor"]},
+    """
+
+    messages = [
+        SystemMessage(content=INT_AGENT_PROMPT),
+        HumanMessage(content=input_data),
+    ]
+    response = llm.invoke(messages)
+    content = json.loads(response.content)
     return {
         **state,
-        "intervention": "INTERVENTION DATA",
+        "int": {
+            **content,
+        },
     }
 
 
@@ -464,7 +483,8 @@ workflow.add_edge("AWX_AGENT", "WAX_AGENT")
 workflow.add_edge("WAX_AGENT", "WTX_AGENT")
 workflow.add_edge("WTX_AGENT", "SEG_AGENT")
 workflow.add_edge("SEG_AGENT", "JNY_AGENT")
-workflow.add_edge("JNY_AGENT", END)
+workflow.add_edge("JNY_AGENT", "INT_AGENT")
+workflow.add_edge("INT_AGENT", END)
 # # TODO: add WTX_AGENT
 # workflow.add_edge("WAX_AGENT", "SEG_AGENT")
 # workflow.add_edge("JNY_AGENT", "INT_AGENT")
