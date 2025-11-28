@@ -22,6 +22,7 @@ from prompt import (
     IDN_AGENT_PROMPT,
     AWX_AGENT_PROMPT,
     WAX_AGENT_PROMPT,
+    WTX_AGENT_PROMPT,
     SEG_AGENT_PROMPT,
     JNY_AGENT_PROMPT,
     INT_AGENT_PROMPT,
@@ -207,6 +208,7 @@ def knu_tool(state: State):
     """
     This tool is used to calculate collective utility of the user.
     """
+
     print("KNU_AGENT called")
 
     input_data = f"Here is the INU data and context vector from KON: {json.dumps(state['inu'])} and {json.dumps(state['context']['context_vector'])}"
@@ -228,6 +230,7 @@ def idn_tool(state: State):
     """
     This tool is used to describe how identity, belonging, and self-concept contribute to value creation.
     """
+
     print("IDN_AGENT called")
 
     input_data = f"Here is the INU data, KNU data and KON data: {json.dumps(state['inu'])} and {json.dumps(state['knu'])} and {json.dumps(state['context'])}"
@@ -251,11 +254,12 @@ def awareness_tool(state: State):
     This tool is used to estimate the level of awareness based on individual utility
     (INU), collective alignment (KNU), and contextual stability (CQI).
     """
+
     print("AWX_AGENT called")
 
     input_data = f"""Here is the input data.
-    inu: {json.dumps(state['inu']['inu'])}
-    alignment_index: {json.dumps(state['knu']['alignment_index'])}
+    inu: {state['inu']['inu']}
+    alignment_index: {state['knu']['alignment_index']}
     cqi: {state['context']['cqi']}
     kernel_status: {state['meta']['kernel_status']}
     """
@@ -296,6 +300,35 @@ def willingness_tool(state: State):
     return {
         **state,
         "wax": {
+            **content,
+        },
+    }
+
+
+def willingness_to_action_tool(state: State):
+    """
+    This tool is used to represent the final translation from willingness (WAX) into
+    actual behavioral probability
+    """
+
+    print("WTX_AGENT called")
+
+    input_data = f"""Here is the input data.
+    willingness_level: {json.dumps(state['wax']['willingness_level'])}
+    cqi: {state['context']['cqi']}
+    blind_spot_index: {json.dumps(state['awx']['blind_spot_index'])}
+    kernel_status: {state['meta']['kernel_status']}
+    """
+    messages = [
+        SystemMessage(content=WTX_AGENT_PROMPT),
+        HumanMessage(content=input_data),
+    ]
+    response = llm.invoke(messages)
+    content = json.loads(response.content)
+
+    return {
+        **state,
+        "wtx": {
             **content,
         },
     }
@@ -369,7 +402,7 @@ workflow.add_node("IDN_AGENT", idn_tool)
 workflow.add_node("AWX_AGENT", awareness_tool)
 workflow.add_node("JNY_AGENT", journey_tool)
 workflow.add_node("WAX_AGENT", willingness_tool)
-# TODO: add WTX_AGENT
+workflow.add_node("WTX_AGENT", willingness_to_action_tool)
 workflow.add_node("SEG_AGENT", segment_tool)
 workflow.add_node("INT_AGENT", intervention_tool)
 workflow.add_node("WATCHDOG_AGENT", watchdog_tool)
@@ -390,7 +423,8 @@ workflow.add_edge("INU_AGENT", "KNU_AGENT")
 workflow.add_edge("KNU_AGENT", "IDN_AGENT")
 workflow.add_edge("IDN_AGENT", "AWX_AGENT")
 workflow.add_edge("AWX_AGENT", "WAX_AGENT")
-workflow.add_edge("WAX_AGENT", END)
+workflow.add_edge("WAX_AGENT", "WTX_AGENT")
+workflow.add_edge("WTX_AGENT", END)
 # # TODO: add WTX_AGENT
 # workflow.add_edge("WAX_AGENT", "SEG_AGENT")
 # workflow.add_edge("SEG_AGENT", "JNY_AGENT")
@@ -409,7 +443,7 @@ chain = workflow.compile()
 # print("Graph visualization saved to graph_visualization.png")
 
 # Invoke
-user_message = "As a budget-conscious college student who knows only a little about investment apps, I’d be willing to try one if it clearly saves me money and shows exactly how it works"
+user_message = "As a budget-conscious college student who knows only a little about investment apps, I'd be willing to try one if it clearly saves me money and shows exactly how it works"
 state = chain.invoke({"user_message": user_message})
 print(state)
 # state = chain.invoke({"topic": "cats"})

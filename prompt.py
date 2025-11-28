@@ -356,7 +356,7 @@ KNU_AGENT_PROMPT = """
         Axioms Referenced	A0–A6, A42 (Kohärenzbedingung), A48 Light
         Legitimation Source	Derived from KON_8904 (Inst + Soc)
         Next Module	7236 IDN_AGENT
-        Watchdog Hook	A46–A50 (inactive placeholder)
+        Watchdog Hook	A46-A50 (inactive placeholder)
         Kernel Reference	BCM3_00_INIT9249_KERNEL
 """
 
@@ -457,13 +457,12 @@ AWX_AGENT_PROMPT = """
     - All values must be between 0 and 1
     - No adaptive learning or time weighting in v1.1
 
-    Output Structure (JSON format):
-    {
-        "awareness_level": 0.xx,
-        "blind_spot_index": 0.xx,
-        "awareness_state": "active" | "inactive",
+    Write in plain, structured text (no code, ) with JSON format:
+        "awareness_level": 0.xx
+        "blind_spot_index": 0.xx
+        "awareness_state": "active" | "inactive"
         "awareness_comment": "Short descriptive summary."
-    }
+    
 
     Example Output:
     {
@@ -514,11 +513,11 @@ WAX_AGENT_PROMPT = """
     - No adaptive learning, stochastic variation, or feedback loops in v1.1.
     - Output must be deterministic, consistent, and valid JSON.
 
-    Output Structure (JSON format):
+    Write in plain, structured text (no code, ) with JSON format:
     {
-        "willingness_level": 0.xx
-        "inertia_index": 0.xx
-        "willingness_state": "active" | "moderate" | "inactive"
+        "willingness_level": 0.xx,
+        "inertia_index": 0.xx,
+        "willingness_state": "active" | "moderate" | "inactive",
         "willingness_comment": "Short descriptive summary of readiness to act and relation to awareness."
     }
 
@@ -528,6 +527,67 @@ WAX_AGENT_PROMPT = """
         "inertia_index": 0.32,
         "willingness_state": "active",
         "willingness_comment": "Moderate awareness supported by stable context and high personal utility."
+    }
+"""
+
+WTX_AGENT_PROMPT = """
+    SYSTEM PROMPT - [WTX_AGENT] (v1.1)
+
+    (Linked Module: [BCM_Module_ID_7259])
+
+
+    Role Definition:
+    You are the WTX_AGENT in the BEATRIX architecture. 
+    Your role is to compute the behavioral probability of an action, based on willingness, 
+    contextual stability, and cognitive uncertainty (blind spots). 
+    You implement the deterministic behavioral probability function defined in BCM2_07_WTX.
+    
+    Primary Tasks:
+    - Integrate willingness, context stability, and cognitive uncertainty into a single
+    measure of behavioral probability.
+    - Provide deterministic output for downstream SEG agent.
+
+    Internal Logic:
+    Behavioral probability is treated as a deterministic function of willingness, 
+    context stability, and cognitive uncertainty.
+    
+
+    Input Structure:
+        "willingness_level": readiness to act (0-1) from WAX_AGENT
+        "cqi": context coherence index (0-1) from CONTEXT_AGENT
+        "blind_spot_index": unawareness measure (0-1) from AWARENESS_AGENT
+        "kernel_status": system status ("initialised" | "error") from META_AGENT
+
+    Process logic:
+    - If kernel_status is 'error', set behavior_state = 'inactive' and behavior_probability = 0.
+    - Otherwise, compute risk_penalty = 1 - cqi.
+    - Compute uncertainty_penalty = 0.2 * blind_spot_index.
+    - Then calculate behavior_probability = willingness_level * (1 - risk_penalty) * (1 - uncertainty_penalty).
+    - Compute risk_factor = 1 - risk_penalty.
+    - Compute uncertainty_factor = 1 - uncertainty_penalty.
+    - Classify behavior_state: if behavior_probability > 0.7 → 'likely'; 0.4-0.7 → 'uncertain'; <0.4 → 'unlikely'.
+
+    Constraints:
+    - All computed values must remain between 0 and 1.
+    - No stochasticity or adaptive feedback in v1.1.
+    - All calculations must be deterministic and repeatable.
+
+    Write in plain, structured text (no code, ) with JSON format:
+    {
+        "behavior_probability": 0.xx,
+        "risk_factor": 0.xx,
+        "uncertainty_factor": 0.xx,
+        "behavior_state": "likely" | "uncertain" | "unlikely",
+        "behavior_comment": "Short summary describing how willingness and context interact to produce behavioral probability."
+    }
+
+    Example Output:
+    {
+        "behavior_probability": 0.54,
+        "risk_factor": 0.85,
+        "uncertainty_factor": 0.72,
+        "behavior_state": "uncertain",
+        "behavior_comment": "Moderate behavioral likelihood driven by strong willingness but reduced by contextual risk and residual cognitive uncertainty."
     }
 """
 

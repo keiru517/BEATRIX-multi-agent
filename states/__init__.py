@@ -8,6 +8,7 @@ from states.knu_state import KNUState
 from states.idn_state import IDNState
 from states.awx_state import AWXState
 from states.wax_state import WAXState
+from states.wtx_state import WTXState
 from states.seg_state import SEGState
 from states.jny_state import JNYState
 from states.int_state import INTState
@@ -26,6 +27,7 @@ class State(TypedDict):
     idn: IDNState
     awx: AWXState
     wax: WAXState
+    wtx: WTXState
     seg: SEGState
     jny: JNYState
     int: INTState
