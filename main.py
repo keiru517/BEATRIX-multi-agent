@@ -276,13 +276,28 @@ def awareness_tool(state: State):
 
 def willingness_tool(state: State):
     """
-    This tool is used to calculate readiness to act based on utility, awareness, journey and context.
+    This tool is used to estimate an actor's readiness to act upon their awareness.
     """
-    print("willingness_tool called")
-    # response = llm.invoke(f"Calculate willingness of the following utilities: INU: {state['utilities']['INU']}, KNU: {state['utilities']['KNU']}, IDN: {state['utilities']['IDN']}")
+    print("WAX_AGENT called")
+
+    input_data = f"""Here is the input data.
+    awareness_level: {json.dumps(state['awx']['awareness_level'])}
+    inu: {json.dumps(state['inu']['inu'])}
+    cqi: {state['context']['cqi']}
+    kernel_status: {state['meta']['kernel_status']}
+    """
+    messages = [
+        SystemMessage(content=WAX_AGENT_PROMPT),
+        HumanMessage(content=input_data),
+    ]
+    response = llm.invoke(messages)
+    content = json.loads(response.content)
+
     return {
         **state,
-        "willingness": "WILLINGNESS DATA",
+        "wax": {
+            **content,
+        },
     }
 
 
@@ -374,8 +389,8 @@ workflow.add_edge("CONTEXT_AGENT", "INU_AGENT")
 workflow.add_edge("INU_AGENT", "KNU_AGENT")
 workflow.add_edge("KNU_AGENT", "IDN_AGENT")
 workflow.add_edge("IDN_AGENT", "AWX_AGENT")
-workflow.add_edge("AWX_AGENT", END)
-# workflow.add_edge("AWX_AGENT", "WAX_AGENT")
+workflow.add_edge("AWX_AGENT", "WAX_AGENT")
+workflow.add_edge("WAX_AGENT", END)
 # # TODO: add WTX_AGENT
 # workflow.add_edge("WAX_AGENT", "SEG_AGENT")
 # workflow.add_edge("SEG_AGENT", "JNY_AGENT")
