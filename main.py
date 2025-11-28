@@ -336,13 +336,34 @@ def willingness_to_action_tool(state: State):
 
 def segment_tool(state: State):
     """
-    This tool is used to simply classify behavioral segments based on the current outputs of AWX and WAX.
+    This tool is used to classify actors or simulated profiles into behavioral segments based
+    on their utility structure, awareness, willingness, behavioral probability,
+    and contextual stability.
     """
-    print("segment_tool called")
-    # response = llm.invoke(f"Calculate segment of the following utilities: INU: {state['utilities']['INU']}, KNU: {state['utilities']['KNU']}, IDN: {state['utilities']['IDN']}")
+
+    print("SEGMENT_AGENT called")
+
+    input_data = f"""Here is the input data.
+    inu: {state['inu']['inu']}
+    knu: {state['knu']['knu']}
+    idn: {state['idn']['identity_utility']}
+    awareness_level: {state['awx']['awareness_level']}
+    willingness_level: {state['wax']['willingness_level']}
+    behavior_probability: {state['wtx']['behavior_probability']}
+    cqi: {state['context']['cqi']}
+    kernel_status: {state['meta']['kernel_status']}
+    """
+    messages = [
+        SystemMessage(content=SEG_AGENT_PROMPT),
+        HumanMessage(content=input_data),
+    ]
+    response = llm.invoke(messages)
+    content = json.loads(response.content)
     return {
         **state,
-        "segment": "SEGMENT DATA",
+        "seg": {
+            **content,
+        },
     }
 
 
@@ -424,7 +445,8 @@ workflow.add_edge("KNU_AGENT", "IDN_AGENT")
 workflow.add_edge("IDN_AGENT", "AWX_AGENT")
 workflow.add_edge("AWX_AGENT", "WAX_AGENT")
 workflow.add_edge("WAX_AGENT", "WTX_AGENT")
-workflow.add_edge("WTX_AGENT", END)
+workflow.add_edge("WTX_AGENT", "SEG_AGENT")
+workflow.add_edge("SEG_AGENT", END)
 # # TODO: add WTX_AGENT
 # workflow.add_edge("WAX_AGENT", "SEG_AGENT")
 # workflow.add_edge("SEG_AGENT", "JNY_AGENT")
