@@ -372,6 +372,7 @@ def journey_tool(state: State):
     This tool is used to provide structured transition probabilities and stage classifications
     """
     print("JNY_AGENT called")
+
     input_data = f"""Here is the input data.
     awareness_level: {state['awx']['awareness_level']}
     willingness_level: {state['wax']['willingness_level']}
@@ -380,6 +381,7 @@ def journey_tool(state: State):
     cqi: {state['context']['cqi']}
     kernel_status: {state['meta']['kernel_status']}
     """
+
     messages = [
         SystemMessage(content=JNY_AGENT_PROMPT),
         HumanMessage(content=input_data),
