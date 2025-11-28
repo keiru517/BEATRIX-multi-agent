@@ -505,6 +505,15 @@ chain = workflow.compile()
 user_message = "As a budget-conscious college student who knows only a little about investment apps, I'd be willing to try one if it clearly saves me money and shows exactly how it works"
 state = chain.invoke({"user_message": user_message})
 print(state)
+
+# agent = create_agent(
+#     model="openai:gpt-5-mini",
+#     tools=[chain.get_node("KERNEL_AGENT").tool],
+#     system_prompt="You are a helpful assistant",
+# )
+# agent.invoke(
+#     {"messages": [{"role": "user", "content": "What is the weather in San Francisco?"}]}
+# )
 # state = chain.invoke({"topic": "cats"})
 # print("Initial joke:")
 # print(state["joke"])
