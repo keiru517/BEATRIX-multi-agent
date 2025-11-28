@@ -369,14 +369,29 @@ def segment_tool(state: State):
 
 def journey_tool(state: State):
     """
-    This tool generates a structured path that shows how actors move from one behavioral state to
-    another, based on awareness, willingness, and context.
+    This tool is used to provide structured transition probabilities and stage classifications
     """
-    print("journey_tool called")
-    # response = llm.invoke(f"Calculate journey of the following utilities: INU: {state['utilities']['INU']}, KNU: {state['utilities']['KNU']}, IDN: {state['utilities']['IDN']}")
+    print("JNY_AGENT called")
+    input_data = f"""Here is the input data.
+    awareness_level: {state['awx']['awareness_level']}
+    willingness_level: {state['wax']['willingness_level']}
+    inu: {state['inu']['inu']}
+    segment_confidence: 0.65 # TODO: need to get the segment confidence from the SEG_AGENT
+    cqi: {state['context']['cqi']}
+    kernel_status: {state['meta']['kernel_status']}
+    """
+    messages = [
+        SystemMessage(content=JNY_AGENT_PROMPT),
+        HumanMessage(content=input_data),
+    ]
+    response = llm.invoke(messages)
+    content = json.loads(response.content)
+
     return {
         **state,
-        "journey": "JOURNEY DATA",
+        "jny": {
+            **content,
+        },
     }
 
 
@@ -446,10 +461,10 @@ workflow.add_edge("IDN_AGENT", "AWX_AGENT")
 workflow.add_edge("AWX_AGENT", "WAX_AGENT")
 workflow.add_edge("WAX_AGENT", "WTX_AGENT")
 workflow.add_edge("WTX_AGENT", "SEG_AGENT")
-workflow.add_edge("SEG_AGENT", END)
+workflow.add_edge("SEG_AGENT", "JNY_AGENT")
+workflow.add_edge("JNY_AGENT", END)
 # # TODO: add WTX_AGENT
 # workflow.add_edge("WAX_AGENT", "SEG_AGENT")
-# workflow.add_edge("SEG_AGENT", "JNY_AGENT")
 # workflow.add_edge("JNY_AGENT", "INT_AGENT")
 # workflow.add_edge("INT_AGENT", "WATCHDOG_AGENT")
 # workflow.add_edge("WATCHDOG_AGENT", END)
