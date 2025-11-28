@@ -215,10 +215,11 @@ def knu_tool(state: State):
         HumanMessage(content=input_data),
     ]
     response = llm.invoke(messages)
+    content = json.loads(response.content)
     return {
         **state,
         "knu": {
-            **json.loads(response.content),
+            **content,
         },
     }
 
@@ -235,23 +236,41 @@ def idn_tool(state: State):
         HumanMessage(content=input_data),
     ]
     response = llm.invoke(messages)
+    content = json.loads(response.content)
+
     return {
         **state,
         "idn": {
-            **json.loads(response.content),
+            **content,
         },
     }
 
 
 def awareness_tool(state: State):
     """
-    This tool is used to calculate awareness of a person.
+    This tool is used to estimate the level of awareness based on individual utility
+    (INU), collective alignment (KNU), and contextual stability (CQI).
     """
-    print("awareness_tool called")
-    # response = llm.invoke(f"Calculate awareness of the following utilities: INU: {state['utilities']['INU']}, KNU: {state['utilities']['KNU']}, IDN: {state['utilities']['IDN']}")
+    print("AWX_AGENT called")
+
+    input_data = f"""Here is the input data.
+    inu: {json.dumps(state['inu']['inu'])}
+    alignment_index: {json.dumps(state['knu']['alignment_index'])}
+    cqi: {state['context']['cqi']}
+    kernel_status: {state['meta']['kernel_status']}
+    """
+    messages = [
+        SystemMessage(content=AWX_AGENT_PROMPT),
+        HumanMessage(content=input_data),
+    ]
+    response = llm.invoke(messages)
+    content = json.loads(response.content)
+
     return {
         **state,
-        "awareness": "AWARENESS DATA",
+        "awx": {
+            **content,
+        },
     }
 
 
@@ -354,8 +373,8 @@ workflow.add_edge("META_AGENT", "CONTEXT_AGENT")
 workflow.add_edge("CONTEXT_AGENT", "INU_AGENT")
 workflow.add_edge("INU_AGENT", "KNU_AGENT")
 workflow.add_edge("KNU_AGENT", "IDN_AGENT")
-workflow.add_edge("IDN_AGENT", END)
-# workflow.add_edge("IDN_AGENT", "AWX_AGENT")
+workflow.add_edge("IDN_AGENT", "AWX_AGENT")
+workflow.add_edge("AWX_AGENT", END)
 # workflow.add_edge("AWX_AGENT", "WAX_AGENT")
 # # TODO: add WTX_AGENT
 # workflow.add_edge("WAX_AGENT", "SEG_AGENT")
