@@ -28,11 +28,22 @@ from prompt import (
     INT_AGENT_PROMPT,
     WATCHDOG_AGENT_PROMPT,
 )
-from states import State
-from states.inu_state import INUState
-from states.knu_state import KNUState
-from states.meta_state import MetaState
-from states.wtx_state import WTXState
+from states import (
+    State,
+    KernelState,
+    MetaState,
+    ContextState,
+    INUState,
+    KNUState,
+    IDNState,
+    AWXState,
+    WAXState,
+    WTXState,
+    SEGState,
+    JNYState,
+    INTState,
+    WatchdogState,
+)
 
 # Load environment variables from .env file
 # TODO: need to get from environment variables
@@ -212,8 +223,6 @@ def knu_tool(state: State):
     This tool is used to calculate collective utility of the user.
     """
 
-    print("KNU_AGENT called")
-
     input_data = f"Here is the INU data and context vector from KON: {json.dumps(state['inu'])} and {json.dumps(state['context']['context_vector'])}"
     messages = [
         SystemMessage(content=KNU_AGENT_PROMPT),
@@ -234,20 +243,18 @@ def idn_tool(state: State):
     This tool is used to describe how identity, belonging, and self-concept contribute to value creation.
     """
 
-    print("IDN_AGENT called")
-
     input_data = f"Here is the INU data, KNU data and KON data: {json.dumps(state['inu'])} and {json.dumps(state['knu'])} and {json.dumps(state['context'])}"
     messages = [
         SystemMessage(content=IDN_AGENT_PROMPT),
         HumanMessage(content=input_data),
     ]
-    response = llm.invoke(messages)
-    content = json.loads(response.content)
+    structured_llm = llm.with_structured_output(IDNState)
+    response = structured_llm.invoke(messages)
 
     return {
         **state,
         "idn": {
-            **content,
+            **response,
         },
     }
 
@@ -258,25 +265,24 @@ def awareness_tool(state: State):
     (INU), collective alignment (KNU), and contextual stability (CQI).
     """
 
-    print("AWX_AGENT called")
-
-    input_data = f"""Here is the input data.
-    inu: {state['inu']['inu']}
-    alignment_index: {state['knu']['alignment_index']}
-    cqi: {state['context']['cqi']}
-    kernel_status: {state['meta']['kernel_status']}
-    """
+    input_data = (
+        f"Here is the input data.\n"
+        f"inu: {state['inu']['inu']}\n"
+        f"alignment_index: {state['knu']['alignment_index']}\n"
+        f"cqi: {state['context']['cqi']}\n"
+        f"kernel_status: {state['meta']['kernel_status']}\n"
+    )
     messages = [
         SystemMessage(content=AWX_AGENT_PROMPT),
         HumanMessage(content=input_data),
     ]
-    response = llm.invoke(messages)
-    content = json.loads(response.content)
+    structured_llm = llm.with_structured_output(AWXState)
+    response = structured_llm.invoke(messages)
 
     return {
         **state,
         "awx": {
-            **content,
+            **response,
         },
     }
 
@@ -285,25 +291,25 @@ def willingness_tool(state: State):
     """
     This tool is used to estimate an actor's readiness to act upon their awareness.
     """
-    print("WAX_AGENT called")
 
-    input_data = f"""Here is the input data.
-    awareness_level: {json.dumps(state['awx']['awareness_level'])}
-    inu: {json.dumps(state['inu']['inu'])}
-    cqi: {state['context']['cqi']}
-    kernel_status: {state['meta']['kernel_status']}
-    """
+    input_data = (
+        f"Here is the input data.\n"
+        f"awareness_level: {state['awx']['awareness_level']}\n"
+        f"inu: {state['inu']['inu']}\n"
+        f"cqi: {state['context']['cqi']}\n"
+        f"kernel_status: {state['meta']['kernel_status']}\n"
+    )
     messages = [
         SystemMessage(content=WAX_AGENT_PROMPT),
         HumanMessage(content=input_data),
     ]
-    response = llm.invoke(messages)
-    content = json.loads(response.content)
+    structured_llm = llm.with_structured_output(WAXState)
+    response = structured_llm.invoke(messages)
 
     return {
         **state,
         "wax": {
-            **content,
+            **response,
         },
     }
 
@@ -314,14 +320,13 @@ def willingness_to_action_tool(state: State):
     actual behavioral probability
     """
 
-    print("WTX_AGENT called")
-
-    input_data = f"""Here is the input data.
-    willingness_level: {json.dumps(state['wax']['willingness_level'])}
-    cqi: {state['context']['cqi']}
-    blind_spot_index: {json.dumps(state['awx']['blind_spot_index'])}
-    kernel_status: {state['meta']['kernel_status']}
-    """
+    input_data = (
+        f"Here is the input data.\n"
+        f"willingness_level: {state['wax']['willingness_level']}\n"
+        f"cqi: {state['context']['cqi']}\n"
+        f"blind_spot_index: {state['awx']['blind_spot_index']}\n"
+        f"kernel_status: {state['meta']['kernel_status']}\n"
+    )
     messages = [
         SystemMessage(content=WTX_AGENT_PROMPT),
         HumanMessage(content=input_data),
@@ -344,28 +349,27 @@ def segment_tool(state: State):
     and contextual stability.
     """
 
-    print("SEGMENT_AGENT called")
-
-    input_data = f"""Here is the input data.
-    inu: {state['inu']['inu']}
-    knu: {state['knu']['knu']}
-    idn: {state['idn']['identity_utility']}
-    awareness_level: {state['awx']['awareness_level']}
-    willingness_level: {state['wax']['willingness_level']}
-    behavior_probability: {state['wtx']['behavior_probability']}
-    cqi: {state['context']['cqi']}
-    kernel_status: {state['meta']['kernel_status']}
-    """
+    input_data = (
+        f"Here is the input data.\n"
+        f"inu: {state['inu']['inu']}\n"
+        f"knu: {state['knu']['knu']}\n"
+        f"idn: {state['idn']['identity_utility']}\n"
+        f"awareness_level: {state['awx']['awareness_level']}\n"
+        f"willingness_level: {state['wax']['willingness_level']}\n"
+        f"behavior_probability: {state['wtx']['behavior_probability']}\n"
+        f"cqi: {state['context']['cqi']}\n"
+        f"kernel_status: {state['meta']['kernel_status']}\n"
+    )
     messages = [
         SystemMessage(content=SEG_AGENT_PROMPT),
         HumanMessage(content=input_data),
     ]
-    response = llm.invoke(messages)
-    content = json.loads(response.content)
+    structured_llm = llm.with_structured_output(SEGState)
+    response = structured_llm.invoke(messages)
     return {
         **state,
         "seg": {
-            **content,
+            **response,
         },
     }
 
@@ -374,28 +378,26 @@ def journey_tool(state: State):
     """
     This tool is used to provide structured transition probabilities and stage classifications
     """
-    print("JNY_AGENT called")
-
-    input_data = f"""Here is the input data.
-    awareness_level: {state['awx']['awareness_level']}
-    willingness_level: {state['wax']['willingness_level']}
-    inu: {state['inu']['inu']}
-    segment_confidence: 0.65 # TODO: need to get the segment confidence from the SEG_AGENT
-    cqi: {state['context']['cqi']}
-    kernel_status: {state['meta']['kernel_status']}
-    """
-
+    input_data = (
+        f"Here is the input data.\n"
+        f"awareness_level: {state['awx']['awareness_level']}\n"
+        f"willingness_level: {state['wax']['willingness_level']}\n"
+        f"inu: {state['inu']['inu']}\n"
+        f"segment_confidence: 0.65 # TODO: need to get the segment confidence from the SEG_AGENT\n"
+        f"cqi: {state['context']['cqi']}\n"
+        f"kernel_status: {state['meta']['kernel_status']}\n"
+    )
     messages = [
         SystemMessage(content=JNY_AGENT_PROMPT),
         HumanMessage(content=input_data),
     ]
-    response = llm.invoke(messages)
-    content = json.loads(response.content)
+    structured_llm = llm.with_structured_output(JNYState)
+    response = structured_llm.invoke(messages)
 
     return {
         **state,
         "jny": {
-            **content,
+            **response,
         },
     }
 
@@ -406,30 +408,24 @@ def intervention_tool(state: State):
     showing what kind of action or measure is most effective to move the actor from
     the current to the next behavioral phase.
     """
-    print("intervention_tool called")
-
     input_data = (
         f"Here is the input data.\n"
-        f'intervention_type: "nudge",\n'
-        f"fepsde_focus: {state["inu"]["fepsde"]},\n"
-        f'journey_phase: "trigger",\n'
-        f"context_vector: {json.dumps(state['context']['context_vector'])},\n"
-        f"awareness_level: {state['awx']['awareness_level']},\n"
-        f"willingness_level: {state['wax']['willingness_level']},\n"
-        f"risk_factor: {state["wtx"]["risk_factor"]},\n"
-        f"uncertainty_factor: {state["wtx"]["uncertainty_factor"]},\n"
+        f"journey_stage: {state['jny']['journey_stage']}\n"
+        f"transition_probability: {state['jny']['transition_probability']}\n"
+        f"drift_index: {state['jny']['drift_index']}\n"
+        f"journey_state: {state['jny']['journey_state']}\n"
+        f"journey_comment: {state['jny']['journey_comment']}\n"
     )
-
     messages = [
         SystemMessage(content=INT_AGENT_PROMPT),
         HumanMessage(content=input_data),
     ]
-    response = llm.invoke(messages)
-    content = json.loads(response.content)
+    structured_llm = llm.with_structured_output(INTState)
+    response = structured_llm.invoke(messages)
     return {
         **state,
         "int": {
-            **content,
+            **response,
         },
     }
 
