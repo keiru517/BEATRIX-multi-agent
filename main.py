@@ -435,13 +435,10 @@ def intervention_tool(state: State):
 
 def watchdog_tool(state: State):
     """
-    This tool continuously monitors the BEATRIX architecture to ensure that all
-    modules are running correctly, in the right order, and with coherent outputs.
-    It doesn't adapt or learn yet — it simply validates structure, integrity, and
-    coherence at runtime.
+    1. Logs and classifies the anomaly from state['error'].
+    2. Decides the next action: 'REINIT' (Kernel) or 'ALERT' (Meta).
     """
 
-    print("watchdog_tool called")
     # response = llm.invoke(f"Validate the following intervention: {state['intervention']}")
 
     # TODO: need to implement the watchdog logic
