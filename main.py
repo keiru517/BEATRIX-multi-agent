@@ -164,32 +164,30 @@ def context_tool(state: State):
     This tool is used to Transform a contextual input (provided as structured JSON) into
     a simplified 4-dimensional context modulation vector.
     """
-    print("CONTEXT_AGENT called")
 
-    input_data = {
-        "kernel_status": state["meta"]["kernel_status"],
-        "user_message": state["user_message"],
-        # TODO: this data might comes from the user at the beginning.
-        "environment": {
-            "institutional": 0.82,
-            "social": 0.58,
-            "informational": "medium",
-            "complexity": "very high",
-        },
-    }
+    input_data = (
+        f"kernel_status: {state['meta']['kernel_status']}\n"
+        f"user_message: {state['user_message']}\n"
+        "environment: {{\n"
+        '    "institutional": 0.82,\n'
+        '    "social": 0.58,\n'
+        '    "informational": "medium",\n'
+        '    "complexity": "very high",\n'
+        "}}\n"
+    )
 
-    response = llm.invoke(
+    structured_llm = llm.with_structured_output(ContextState)
+    response = structured_llm.invoke(
         [
             SystemMessage(content=CONTEXT_AGENT_PROMPT),
-            HumanMessage(content=json.dumps(input_data)),
+            HumanMessage(content=input_data),
         ]
     )
-    content = json.loads(response.content)
 
     return {
         **state,
         "context": {
-            **content,
+            **response,
         },
     }
 
@@ -230,6 +228,7 @@ def knu_tool(state: State):
     ]
     structured_llm = llm.with_structured_output(KNUState)
     response = structured_llm.invoke(messages)
+
     return {
         **state,
         "knu": {
@@ -366,6 +365,7 @@ def segment_tool(state: State):
     ]
     structured_llm = llm.with_structured_output(SEGState)
     response = structured_llm.invoke(messages)
+
     return {
         **state,
         "seg": {
@@ -378,6 +378,7 @@ def journey_tool(state: State):
     """
     This tool is used to provide structured transition probabilities and stage classifications
     """
+
     input_data = (
         f"Here is the input data.\n"
         f"awareness_level: {state['awx']['awareness_level']}\n"
@@ -408,6 +409,7 @@ def intervention_tool(state: State):
     showing what kind of action or measure is most effective to move the actor from
     the current to the next behavioral phase.
     """
+
     input_data = (
         f"Here is the input data.\n"
         f"journey_stage: {state['jny']['journey_stage']}\n"
@@ -422,6 +424,7 @@ def intervention_tool(state: State):
     ]
     structured_llm = llm.with_structured_output(INTState)
     response = structured_llm.invoke(messages)
+
     return {
         **state,
         "int": {
@@ -437,8 +440,11 @@ def watchdog_tool(state: State):
     It doesn't adapt or learn yet — it simply validates structure, integrity, and
     coherence at runtime.
     """
+
     print("watchdog_tool called")
     # response = llm.invoke(f"Validate the following intervention: {state['intervention']}")
+
+    # TODO: need to implement the watchdog logic
     return {
         **state,
         "validation": "VALIDATION DATA",
@@ -474,7 +480,6 @@ workflow.add_edge(START, "KERNEL_AGENT")
 # )
 workflow.add_edge("KERNEL_AGENT", "META_AGENT")
 workflow.add_edge("META_AGENT", "CONTEXT_AGENT")
-
 workflow.add_edge("CONTEXT_AGENT", "INU_AGENT")
 workflow.add_edge("INU_AGENT", "KNU_AGENT")
 workflow.add_edge("KNU_AGENT", "IDN_AGENT")
@@ -485,12 +490,6 @@ workflow.add_edge("WTX_AGENT", "SEG_AGENT")
 workflow.add_edge("SEG_AGENT", "JNY_AGENT")
 workflow.add_edge("JNY_AGENT", "INT_AGENT")
 workflow.add_edge("INT_AGENT", END)
-# # TODO: add WTX_AGENT
-# workflow.add_edge("WAX_AGENT", "SEG_AGENT")
-# workflow.add_edge("JNY_AGENT", "INT_AGENT")
-# workflow.add_edge("INT_AGENT", "WATCHDOG_AGENT")
-# workflow.add_edge("WATCHDOG_AGENT", END)
-
 
 # Compile
 chain = workflow.compile()
@@ -505,26 +504,3 @@ chain = workflow.compile()
 user_message = "As a budget-conscious college student who knows only a little about investment apps, I'd be willing to try one if it clearly saves me money and shows exactly how it works"
 state = chain.invoke({"user_message": user_message})
 print(state)
-
-# agent = create_agent(
-#     model="openai:gpt-5-mini",
-#     tools=[chain.get_node("KERNEL_AGENT").tool],
-#     system_prompt="You are a helpful assistant",
-# )
-# agent.invoke(
-#     {"messages": [{"role": "user", "content": "What is the weather in San Francisco?"}]}
-# )
-# state = chain.invoke({"topic": "cats"})
-# print("Initial joke:")
-# print(state["joke"])
-# print("\n--- --- ---\n")
-# if "improved_joke" in state:
-#     print("Improved joke:")
-#     print(state["improved_joke"])
-#     print("\n--- --- ---\n")
-
-#     print("Final joke:")
-#     print(state["final_joke"])
-# else:
-#     print("Final joke:")
-#     print(state["joke"])
