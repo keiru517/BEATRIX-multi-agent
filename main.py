@@ -44,7 +44,7 @@ from states import (
     INTState,
     WatchdogState,
 )
-from utils.decorators import error_handler, kernel_tool_decorator
+from utils.decorators import error_handler, kernel_tool_decorator, agent_wrapper
 from utils.logger import get_app_logger
 
 
@@ -63,6 +63,7 @@ llm = ChatOpenAI(
 START_NODE = "META_AGENT"
 END_NODE = "__end__"
 AGENT_ORDER = [
+    "KERNEL_AGENT",
     "META_AGENT",
     "CONTEXT_AGENT",
     "INU_AGENT",
@@ -74,14 +75,14 @@ AGENT_ORDER = [
     "SEG_AGENT",
     "JNY_AGENT",
     "INT_AGENT",
-    # "WATCHDOG_AGENT",
+    "WATCHDOG_AGENT",
 ]
 
 TOTAL_NODES = len(AGENT_ORDER) + 1  # +1 for KERNEL_AGENT
 
 
 # Nodes
-@kernel_tool_decorator
+@agent_wrapper
 def kernel_tool(state: State, workflow: StateGraph):
     """
     This tool is used to check existence of all the modules, their order and dependencies.
@@ -119,9 +120,10 @@ def kernel_tool(state: State, workflow: StateGraph):
         f"kernel_tool: total_nodes: {total_nodes}, TOTAL_NODES: {TOTAL_NODES}, order: {order}, AGENT_ORDER: {AGENT_ORDER}"
     )
     if total_nodes == TOTAL_NODES and order == AGENT_ORDER:
-        print("kernel_tool: all modules are here and in the right order")
+        logger.info("kernel_tool: all modules are here and in the right order")
         return {
             **state,
+            "current_agent_index": 0,
             "kernel": {
                 "system_ready": True,
                 "agents_registered": order,
@@ -130,9 +132,10 @@ def kernel_tool(state: State, workflow: StateGraph):
             },
         }
     else:
-        print("kernel_tool: all modules are not here or in the right order")
+        logger.error("kernel_tool: all modules are not here or in the right order")
         return {
             **state,
+            "current_agent_index": 0,
             "kernel": {
                 "system_ready": True,
                 "agents_registered": order,
@@ -458,6 +461,19 @@ def watchdog_tool(state: State):
     }
 
 
+def route_agents(state: State):
+    """Decides the next step: Error Handler, Next Agent, or END."""
+
+    if state["kernel"]["system_ready"] == False:
+        return "WATCHDOG_AGENT"
+
+    current_index = state["current_agent_index"]
+    if current_index >= len(AGENT_ORDER):
+        return END
+
+    return AGENT_ORDER[current_index]
+
+
 # Build workflow
 workflow = StateGraph(State)
 
@@ -475,7 +491,7 @@ workflow.add_node("WAX_AGENT", willingness_tool)
 workflow.add_node("WTX_AGENT", willingness_to_action_tool)
 workflow.add_node("SEG_AGENT", segment_tool)
 workflow.add_node("INT_AGENT", intervention_tool)
-# workflow.add_node("WATCHDOG_AGENT", watchdog_tool)
+workflow.add_node("WATCHDOG_AGENT", watchdog_tool)
 
 # Add edges to connect nodes
 # KERNEL -> META -> CONTEXT -> INU -> KNU -> IDN -> AWX -> WAX -> SEG -> JNY -> INT -> WATCHDOG
