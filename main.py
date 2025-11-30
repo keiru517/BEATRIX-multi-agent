@@ -44,10 +44,15 @@ from states import (
     INTState,
     WatchdogState,
 )
+from utils.decorators import error_handler, kernel_tool_decorator
+from utils.logger import get_app_logger
+
 
 # Load environment variables from .env file
 # TODO: need to get from environment variables
 load_dotenv()
+
+logger = get_app_logger(__name__)
 
 llm = ChatOpenAI(
     model="gpt-4o-mini",
@@ -64,17 +69,19 @@ AGENT_ORDER = [
     "KNU_AGENT",
     "IDN_AGENT",
     "AWX_AGENT",
-    "WA_AGENT",
+    "WAX_AGENT",
+    "WTX_AGENT",
     "SEG_AGENT",
     "JNY_AGENT",
     "INT_AGENT",
-    "WATCHDOG_AGENT",
+    # "WATCHDOG_AGENT",
 ]
 
 TOTAL_NODES = len(AGENT_ORDER) + 1  # +1 for KERNEL_AGENT
 
 
 # Nodes
+@kernel_tool_decorator
 def kernel_tool(state: State, workflow: StateGraph):
     """
     This tool is used to check existence of all the modules, their order and dependencies.
@@ -108,6 +115,9 @@ def kernel_tool(state: State, workflow: StateGraph):
     # TODO: need to do the validation of all the nodes as well
 
     # Are all modules here and in the right order?
+    logger.info(
+        f"kernel_tool: total_nodes: {total_nodes}, TOTAL_NODES: {TOTAL_NODES}, order: {order}, AGENT_ORDER: {AGENT_ORDER}"
+    )
     if total_nodes == TOTAL_NODES and order == AGENT_ORDER:
         print("kernel_tool: all modules are here and in the right order")
         return {
@@ -465,7 +475,7 @@ workflow.add_node("WAX_AGENT", willingness_tool)
 workflow.add_node("WTX_AGENT", willingness_to_action_tool)
 workflow.add_node("SEG_AGENT", segment_tool)
 workflow.add_node("INT_AGENT", intervention_tool)
-workflow.add_node("WATCHDOG_AGENT", watchdog_tool)
+# workflow.add_node("WATCHDOG_AGENT", watchdog_tool)
 
 # Add edges to connect nodes
 # KERNEL -> META -> CONTEXT -> INU -> KNU -> IDN -> AWX -> WAX -> SEG -> JNY -> INT -> WATCHDOG
