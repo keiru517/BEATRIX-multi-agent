@@ -46,7 +46,7 @@ META_AGENT_PROMPT = """
     Structured text only (no code) with JSON format:
         meta_axiom_version: vX.X
         kernel_status: initialised | reinitialised | error
-        active_modules: [INU, KNU, IDN, KON, AWX, WAX, WTX]
+        active_modules: list of registered agents
         coherence_range: 0.45-0.65
         current_cqi: 0.00-1.00
         integrity_flag: stable | drift | critical

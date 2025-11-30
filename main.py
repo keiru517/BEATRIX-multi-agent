@@ -29,13 +29,17 @@ from prompt import (
     WATCHDOG_AGENT_PROMPT,
 )
 from states import State
+from states.inu_state import INUState
+from states.knu_state import KNUState
+from states.meta_state import MetaState
+from states.wtx_state import WTXState
 
 # Load environment variables from .env file
 # TODO: need to get from environment variables
 load_dotenv()
 
 llm = ChatOpenAI(
-    model="gpt-3.5-turbo",
+    model="gpt-4o-mini",
     temperature=0.3,
     api_key=os.getenv("OPENAI_API_KEY"),
 )
@@ -74,7 +78,6 @@ def kernel_tool(state: State, workflow: StateGraph):
         • On failure → WATCHDOG_AGENT (error capture)
     """
 
-    print("KERNEL_AGENT called")
     total_nodes = len(workflow.nodes)
 
     # Get order of nodes by traversing edges from START
@@ -120,27 +123,27 @@ def kernel_tool(state: State, workflow: StateGraph):
 
 def meta_tool(state: State):
     """Gate function to check if the initialization is successful."""
-    print("META_AGENT called")
 
-    kernel_result = (
+    input_data = (
+        f"Here is the input data.\n"
         f"Kernel status: {state['kernel']['system_ready']}\n"
         f"Agents registered: {', '.join(state['kernel']['agents_registered'])}\n"
         f"Version info: {state['kernel']['version_info']}\n"
         f"Kernel timestamp: {state['kernel']['kernel_timestamp']}"
     )
 
-    response = llm.invoke(
+    structured_llm = llm.with_structured_output(MetaState)
+    response = structured_llm.invoke(
         [
             SystemMessage(content=META_AGENT_PROMPT),
-            HumanMessage(content=f"Here is the kernel result: {kernel_result}"),
+            HumanMessage(content=input_data),
         ]
     )
-    content = json.loads(response.content)
 
     return {
         **state,
         "meta": {
-            **content,
+            **response,
         },
     }
 
@@ -184,7 +187,6 @@ def inu_tool(state: State):
     """
     This tool is used to calculate individual utility of the user.
     """
-    print("INU_AGENT called")
 
     # TODO: if context_state != active, do not calculation
     # TODO: if cqi < 0.3, trigger WATCHDOG_AGENT
@@ -192,14 +194,15 @@ def inu_tool(state: State):
     input_data = f"Here is the context vector from KON: {json.dumps(state['context']['context_vector'])} and CQI: {state['context']['cqi']}"
     messages = [
         SystemMessage(content=INU_AGENT_PROMPT),
-        HumanMessage(content=state["user_message"] + "\n" + input_data),
+        HumanMessage(content=input_data),
     ]
-    response = llm.invoke(messages)
+    structured_llm = llm.with_structured_output(INUState)
+    response = structured_llm.invoke(messages)
 
     return {
         **state,
         "inu": {
-            **json.loads(response.content),
+            **response,
         },
     }
 
@@ -216,12 +219,12 @@ def knu_tool(state: State):
         SystemMessage(content=KNU_AGENT_PROMPT),
         HumanMessage(content=input_data),
     ]
-    response = llm.invoke(messages)
-    content = json.loads(response.content)
+    structured_llm = llm.with_structured_output(KNUState)
+    response = structured_llm.invoke(messages)
     return {
         **state,
         "knu": {
-            **content,
+            **response,
         },
     }
 
@@ -323,13 +326,13 @@ def willingness_to_action_tool(state: State):
         SystemMessage(content=WTX_AGENT_PROMPT),
         HumanMessage(content=input_data),
     ]
-    response = llm.invoke(messages)
-    content = json.loads(response.content)
+    structured_llm = llm.with_structured_output(WTXState)
+    response = structured_llm.invoke(messages)
 
     return {
         **state,
         "wtx": {
-            **content,
+            **response,
         },
     }
 
@@ -405,16 +408,17 @@ def intervention_tool(state: State):
     """
     print("intervention_tool called")
 
-    input_data = f"""Here is the input data.
-    intervention_type: "nudge",
-    fepsde_focus: {state["inu"]["fepsde"]},
-    journey_phase: "trigger",
-    context_vector: {json.dumps(state['context']['context_vector'])}
-    awareness_level: {state['awx']['awareness_level']}
-    willingness_level: {state['wax']['willingness_level']}
-    risk_factor: {state["wtx"]["risk_factor"]},
-    uncertainty_factor: {state["wtx"]["uncertainty_factor"]},
-    """
+    input_data = (
+        f"Here is the input data.\n"
+        f'intervention_type: "nudge",\n'
+        f"fepsde_focus: {state["inu"]["fepsde"]},\n"
+        f'journey_phase: "trigger",\n'
+        f"context_vector: {json.dumps(state['context']['context_vector'])},\n"
+        f"awareness_level: {state['awx']['awareness_level']},\n"
+        f"willingness_level: {state['wax']['willingness_level']},\n"
+        f"risk_factor: {state["wtx"]["risk_factor"]},\n"
+        f"uncertainty_factor: {state["wtx"]["uncertainty_factor"]},\n"
+    )
 
     messages = [
         SystemMessage(content=INT_AGENT_PROMPT),
