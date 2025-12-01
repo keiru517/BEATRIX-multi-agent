@@ -78,7 +78,7 @@ AGENT_ORDER = [
     "WATCHDOG_AGENT",
 ]
 
-TOTAL_NODES = len(AGENT_ORDER) + 1  # +1 for KERNEL_AGENT
+TOTAL_NODES = len(AGENT_ORDER)
 
 
 # Nodes
@@ -102,28 +102,11 @@ def kernel_tool(state: State, workflow: StateGraph):
 
     # Get the total number of nodes
     total_nodes = len(workflow.nodes)
-
-    # Get order of nodes by traversing edges from START
-    order = []
-    edges = workflow.edges  # list of (from_node, to_node) tuples
-
-    edge_map = {from_node: to_node for (from_node, to_node) in edges}
-
-    order = [START_NODE]
-    current_node = START_NODE
-    while current_node != END_NODE:
-        current_node = edge_map.get(current_node)
-        if current_node == END_NODE or current_node is None:
-            break
-        order.append(current_node)
+    agent_registered = list(workflow.nodes.keys())
 
     # TODO: need to do the validation of all the nodes as well
 
-    # Are all modules here and in the right order?
-    logger.info(
-        f"kernel_tool: total_nodes: {total_nodes}, TOTAL_NODES: {TOTAL_NODES}, order: {order}, AGENT_ORDER: {AGENT_ORDER}"
-    )
-    if total_nodes == TOTAL_NODES and order == AGENT_ORDER:
+    if total_nodes == TOTAL_NODES and agent_registered == AGENT_ORDER:
         logger.info("kernel_tool: all modules are here and in the right order")
         return {
             **state,
@@ -131,7 +114,7 @@ def kernel_tool(state: State, workflow: StateGraph):
             "axioms": axioms,
             "kernel": {
                 "system_ready": True,
-                "agents_registered": order,
+                "agents_registered": agent_registered,
                 "version_info": "v1.0",  # TODO: need to get the version info from the kernel
                 "kernel_timestamp": datetime.now().isoformat(),
             },
@@ -143,8 +126,8 @@ def kernel_tool(state: State, workflow: StateGraph):
             "next_agent_index": 1,
             "axioms": axioms,
             "kernel": {
-                "system_ready": True,
-                "agents_registered": order,
+                "system_ready": False,
+                "agents_registered": agent_registered,
                 "version_info": "v1.0",  # TODO: need to get the version info from the kernel
                 "kernel_timestamp": datetime.now().isoformat(),
             },
@@ -521,10 +504,10 @@ workflow.add_node("INU_AGENT", inu_tool)
 workflow.add_node("KNU_AGENT", knu_tool)
 workflow.add_node("IDN_AGENT", idn_tool)
 workflow.add_node("AWX_AGENT", awareness_tool)
-workflow.add_node("JNY_AGENT", journey_tool)
 workflow.add_node("WAX_AGENT", willingness_tool)
 workflow.add_node("WTX_AGENT", willingness_to_action_tool)
 workflow.add_node("SEG_AGENT", segment_tool)
+workflow.add_node("JNY_AGENT", journey_tool)
 workflow.add_node("INT_AGENT", intervention_tool)
 workflow.add_node("WATCHDOG_AGENT", watchdog_tool)
 
