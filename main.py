@@ -96,6 +96,11 @@ def kernel_tool(state: State, workflow: StateGraph):
         • On failure → WATCHDOG_AGENT (error capture)
     """
 
+    # Read the axioms_v1_1.json file
+    with open("axioms_v1_1.json", "r") as f:
+        axioms = json.load(f)
+
+    # Get the total number of nodes
     total_nodes = len(workflow.nodes)
 
     # Get order of nodes by traversing edges from START
@@ -123,6 +128,7 @@ def kernel_tool(state: State, workflow: StateGraph):
         return {
             **state,
             "next_agent_index": 1,
+            "axioms": axioms,
             "kernel": {
                 "system_ready": True,
                 "agents_registered": order,
@@ -135,8 +141,9 @@ def kernel_tool(state: State, workflow: StateGraph):
         return {
             **state,
             "next_agent_index": 1,
+            "axioms": axioms,
             "kernel": {
-                "system_ready": False,
+                "system_ready": True,
                 "agents_registered": order,
                 "version_info": "v1.0",  # TODO: need to get the version info from the kernel
                 "kernel_timestamp": datetime.now().isoformat(),
@@ -147,29 +154,47 @@ def kernel_tool(state: State, workflow: StateGraph):
 def meta_tool(state: State):
     """Gate function to check if the initialization is successful."""
 
-    input_data = (
-        f"Here is the input data.\n"
-        f"Kernel status: {state['kernel']['system_ready']}\n"
-        f"Agents registered: {', '.join(state['kernel']['agents_registered'])}\n"
-        f"Version info: {state['kernel']['version_info']}\n"
-        f"Kernel timestamp: {state['kernel']['kernel_timestamp']}"
-    )
+    axioms = state.get("axioms", None)
+    if axioms is None or len(axioms) < 10:
+        return {
+            **state,
+            "kernel": {
+                **state["kernel"],
+                "system_ready": False,
+            },
+            "error": "Incomplete axiom set",
+            "meta_status": "REINIT_REQUIRED",
+        }
+    else:
+        input_data = (
+            f"Here is the input data.\n"
+            f"Kernel status: {state['kernel']['system_ready']}\n"
+            f"Agents registered: {', '.join(state['kernel']['agents_registered'])}\n"
+            f"Version info: {state['kernel']['version_info']}\n"
+            f"Kernel timestamp: {state['kernel']['kernel_timestamp']}"
+        )
 
-    structured_llm = llm.with_structured_output(MetaState)
-    response = structured_llm.invoke(
-        [
-            SystemMessage(content=META_AGENT_PROMPT),
-            HumanMessage(content=input_data),
-        ]
-    )
+        structured_llm = llm.with_structured_output(MetaState)
+        response = structured_llm.invoke(
+            [
+                SystemMessage(content=META_AGENT_PROMPT),
+                HumanMessage(content=input_data),
+            ]
+        )
 
-    return {
-        **state,
-        "next_agent_index": 2,
-        "meta": {
-            **response,
-        },
-    }
+        return {
+            **state,
+            "kernel": {
+                **state["kernel"],
+                "system_ready": True,
+            },
+            "error": None,
+            "meta_status": "OK",
+            "next_agent_index": 2,
+            "meta": {
+                **response,
+            },
+        }
 
 
 def context_tool(state: State):

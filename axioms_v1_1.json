@@ -1,0 +1,12 @@
+{
+    "0.00": "Empirical anchoring : every variable must have an observable base.",
+    "0.01": "Formal consistency : system logic must remain internally coherent.",
+    "0.02": "Observability principle : no latent constructs without proxy.",
+    "0.03": "Reproducibility rule : identical input must produce identical output.",
+    "0.04": "Stability requirement : system parameters must converge under iteration.",
+    "0.05": "Causality principle : all relations must be directionally defined.",
+    "0.06": "Contextual coherence : every result must be tied to its KON reference.",
+    "0.07": "Behavioral compatibility : system behavior must align with empirical data.",
+    "0.08": "Bias neutrality : deviation < 0.05 from baseline distribution.",
+    "0.09": "Integrity check : violations trigger reinit through Watchdog."
+}

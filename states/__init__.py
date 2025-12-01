@@ -20,6 +20,7 @@ class State(TypedDict):
     total_nodes: int
     node_order: list[str]
     next_agent_index: int
+    axioms: dict[str, str]
     kernel: KernelState
     meta: MetaState
     context: ContextState
@@ -33,6 +34,8 @@ class State(TypedDict):
     jny: JNYState
     int: INTState
     watchdog: WatchdogState
+    error: str
+    meta_status: str
 
 
 __all__ = [
