@@ -112,6 +112,7 @@ def kernel_tool(state: State, workflow: StateGraph):
             **state,
             "next_agent_index": 1,
             "axioms": axioms,
+            "axiom_version": "v1.1",  # TODO: need to get version from file or api
             "kernel": {
                 "system_ready": True,
                 "agents_registered": agent_registered,
@@ -125,6 +126,7 @@ def kernel_tool(state: State, workflow: StateGraph):
             **state,
             "next_agent_index": 1,
             "axioms": axioms,
+            "axiom_version": "v1.1",
             "kernel": {
                 "system_ready": False,
                 "agents_registered": agent_registered,
@@ -138,6 +140,7 @@ def meta_tool(state: State):
     """Gate function to check if the initialization is successful."""
 
     axioms = state.get("axioms", None)
+    # TODO: need to use a variable for axiom length
     if axioms is None or len(axioms) < 10:
         return {
             **state,

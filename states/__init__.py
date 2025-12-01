@@ -21,6 +21,7 @@ class State(TypedDict):
     node_order: list[str]
     next_agent_index: int
     axioms: dict[str, str]
+    axiom_version: str
     kernel: KernelState
     meta: MetaState
     context: ContextState
