@@ -4,6 +4,7 @@ from utils.logger import get_app_logger
 logger = get_app_logger(__name__)
 
 
+# deprecated
 def agent_wrapper(func):
     def wrapper(*args, **kwargs):
         if not args:
@@ -13,9 +14,10 @@ def agent_wrapper(func):
         state = args[0]
         try:
             new_state = func(*args, **kwargs)
-            next_index = state["current_agent_index"] + 1
-            new_state["current_agent_index"] = next_index
+            next_index = state["next_agent_index"] + 1
+            new_state["next_agent_index"] = next_index
             new_state["error"] = None
+            print(f"new_state: {new_state}")
             return new_state
         except Exception as e:
             logger.error(f"Error: {e} in agent")
@@ -28,6 +30,7 @@ def agent_wrapper(func):
     return wrapper
 
 
+# deprecated
 def error_handler(func):
     def wrapper(*args, **kwargs):
         try:
@@ -39,6 +42,7 @@ def error_handler(func):
     return wrapper
 
 
+# deprecated
 def kernel_tool_decorator(func):
     def wrapper(*args, **kwargs):
         if not args:

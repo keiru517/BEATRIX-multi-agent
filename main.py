@@ -82,7 +82,6 @@ TOTAL_NODES = len(AGENT_ORDER) + 1  # +1 for KERNEL_AGENT
 
 
 # Nodes
-@agent_wrapper
 def kernel_tool(state: State, workflow: StateGraph):
     """
     This tool is used to check existence of all the modules, their order and dependencies.
@@ -123,7 +122,7 @@ def kernel_tool(state: State, workflow: StateGraph):
         logger.info("kernel_tool: all modules are here and in the right order")
         return {
             **state,
-            "current_agent_index": 0,
+            "next_agent_index": 1,
             "kernel": {
                 "system_ready": True,
                 "agents_registered": order,
@@ -135,9 +134,9 @@ def kernel_tool(state: State, workflow: StateGraph):
         logger.error("kernel_tool: all modules are not here or in the right order")
         return {
             **state,
-            "current_agent_index": 0,
+            "next_agent_index": 1,
             "kernel": {
-                "system_ready": True,
+                "system_ready": False,
                 "agents_registered": order,
                 "version_info": "v1.0",  # TODO: need to get the version info from the kernel
                 "kernel_timestamp": datetime.now().isoformat(),
@@ -166,6 +165,7 @@ def meta_tool(state: State):
 
     return {
         **state,
+        "next_agent_index": 2,
         "meta": {
             **response,
         },
@@ -199,6 +199,7 @@ def context_tool(state: State):
 
     return {
         **state,
+        "next_agent_index": 3,
         "context": {
             **response,
         },
@@ -223,6 +224,7 @@ def inu_tool(state: State):
 
     return {
         **state,
+        "next_agent_index": 4,
         "inu": {
             **response,
         },
@@ -244,6 +246,7 @@ def knu_tool(state: State):
 
     return {
         **state,
+        "next_agent_index": 5,
         "knu": {
             **response,
         },
@@ -265,6 +268,7 @@ def idn_tool(state: State):
 
     return {
         **state,
+        "next_agent_index": 6,
         "idn": {
             **response,
         },
@@ -293,6 +297,7 @@ def awareness_tool(state: State):
 
     return {
         **state,
+        "next_agent_index": 7,
         "awx": {
             **response,
         },
@@ -320,6 +325,7 @@ def willingness_tool(state: State):
 
     return {
         **state,
+        "next_agent_index": 8,
         "wax": {
             **response,
         },
@@ -348,6 +354,7 @@ def willingness_to_action_tool(state: State):
 
     return {
         **state,
+        "next_agent_index": 9,
         "wtx": {
             **response,
         },
@@ -381,6 +388,7 @@ def segment_tool(state: State):
 
     return {
         **state,
+        "next_agent_index": 10,
         "seg": {
             **response,
         },
@@ -410,6 +418,7 @@ def journey_tool(state: State):
 
     return {
         **state,
+        "next_agent_index": 11,
         "jny": {
             **response,
         },
@@ -440,6 +449,7 @@ def intervention_tool(state: State):
 
     return {
         **state,
+        "next_agent_index": 12,
         "int": {
             **response,
         },
@@ -464,14 +474,14 @@ def watchdog_tool(state: State):
 def route_agents(state: State):
     """Decides the next step: Error Handler, Next Agent, or END."""
 
-    if state["kernel"]["system_ready"] == False:
-        return "WATCHDOG_AGENT"
+    if state["kernel"]["system_ready"] is False:
+        return "error"
 
-    current_index = state["current_agent_index"]
-    if current_index >= len(AGENT_ORDER):
+    next_agent_index = state["next_agent_index"]
+    if next_agent_index >= len(AGENT_ORDER):
         return END
 
-    return AGENT_ORDER[current_index]
+    return AGENT_ORDER[next_agent_index]
 
 
 # Build workflow
@@ -496,24 +506,89 @@ workflow.add_node("WATCHDOG_AGENT", watchdog_tool)
 # Add edges to connect nodes
 # KERNEL -> META -> CONTEXT -> INU -> KNU -> IDN -> AWX -> WAX -> SEG -> JNY -> INT -> WATCHDOG
 workflow.add_edge(START, "KERNEL_AGENT")
+for node_name in AGENT_ORDER:
+    current_node_index = AGENT_ORDER.index(node_name)
+    next_node_index = current_node_index + 1
+    if next_node_index >= len(AGENT_ORDER):
+        break
+    workflow.add_conditional_edges(
+        node_name,
+        route_agents,
+        {
+            "error": "WATCHDOG_AGENT",
+            "END": END,
+            AGENT_ORDER[next_node_index]: AGENT_ORDER[next_node_index],
+        },
+    )
+
 # workflow.add_conditional_edges(
 #     "KERNEL_AGENT",
-#     meta_tool,
-#     {"Fail": "WATCHDOG_AGENT", "Pass": "CONTEXT_AGENT"},
+#     route_agents,
+#     {
+#         "error": "WATCHDOG_AGENT",
+#         "END": END,
+#         "META_AGENT": "META_AGENT",
+#     },
 # )
-workflow.add_edge("KERNEL_AGENT", "META_AGENT")
-workflow.add_edge("META_AGENT", "CONTEXT_AGENT")
-workflow.add_edge("CONTEXT_AGENT", "INU_AGENT")
-workflow.add_edge("INU_AGENT", "KNU_AGENT")
-workflow.add_edge("KNU_AGENT", "IDN_AGENT")
-workflow.add_edge("IDN_AGENT", "AWX_AGENT")
-workflow.add_edge("AWX_AGENT", "WAX_AGENT")
-workflow.add_edge("WAX_AGENT", "WTX_AGENT")
-workflow.add_edge("WTX_AGENT", "SEG_AGENT")
-workflow.add_edge("SEG_AGENT", "JNY_AGENT")
-workflow.add_edge("JNY_AGENT", "INT_AGENT")
-workflow.add_edge("INT_AGENT", END)
 
+# workflow.add_conditional_edges(
+#     "META_AGENT",
+#     route_agents,
+#     {
+#         "error": "WATCHDOG_AGENT",
+#         "END": END,
+#         "CONTEXT_AGENT": "CONTEXT_AGENT",
+#     },
+# )
+
+# workflow.add_conditional_edges(
+#     "CONTEXT_AGENT",
+#     route_agents,
+#     {
+#         "error": "WATCHDOG_AGENT",
+#         "END": END,
+#         "INU_AGENT": "INU_AGENT",
+#     },
+# )
+
+# workflow.add_conditional_edges(
+#     "INU_AGENT",
+#     route_agents,
+#     {
+#         "error": "WATCHDOG_AGENT",
+#         "END": END,
+#         "KNU_AGENT": "KNU_AGENT",
+#     },
+# )
+
+# workflow.add_edge("KERNEL_AGENT", "META_AGENT")
+# workflow.add_edge("META_AGENT", "CONTEXT_AGENT")
+# workflow.add_edge("CONTEXT_AGENT", "INU_AGENT")
+# workflow.add_edge("INU_AGENT", "KNU_AGENT")
+# workflow.add_edge("KNU_AGENT", "IDN_AGENT")
+# workflow.add_edge("IDN_AGENT", "AWX_AGENT")
+# workflow.add_edge("AWX_AGENT", "WAX_AGENT")
+# workflow.add_edge("WAX_AGENT", "WTX_AGENT")
+# workflow.add_edge("WTX_AGENT", "SEG_AGENT")
+# workflow.add_edge("SEG_AGENT", "JNY_AGENT")
+# workflow.add_edge("JNY_AGENT", "INT_AGENT")
+# workflow.add_edge("INT_AGENT", END)
+
+# workflow.add_conditional_edges(
+#     "generate_joke", check_punchline, {"Fail": "improve_joke", "Pass": END}
+# )
+# workflow.set_entry_point(AGENT_ORDER[0])
+
+
+# workflow.add_conditional_edges(
+#     "WATCHDOG_AGENT",
+#     lambda state: state["next_action"],
+#     {
+#         "REINIT": "KERNEL_AGENT",
+#         "ALERT": "META_AGENT",
+#         "END": END,
+#     },
+# )
 # Compile
 chain = workflow.compile()
 

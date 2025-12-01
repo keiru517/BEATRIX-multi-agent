@@ -19,7 +19,7 @@ class State(TypedDict):
     user_message: str
     total_nodes: int
     node_order: list[str]
-    current_agent_index: int
+    next_agent_index: int
     kernel: KernelState
     meta: MetaState
     context: ContextState
