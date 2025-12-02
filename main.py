@@ -509,11 +509,24 @@ def check_agent_prerequisites(agent_name: str, state: State) -> bool:
         # Check for existence and then check the internal state/activity
         if not context_state or context_state != "active":
             logger.info(
-                "Validation Failed for INUT_AGENT: Context state is not active."
+                "Validation Failed for INU_AGENT: because context state of CONTEXT_AGENT is not active."
             )
             global error
-            error = "Validation Failed for INUT_AGENT: Context state is not active."
+            error = "Validation Failed for INU_AGENT: because context state of CONTEXT_AGENT is not active."
 
+            return False
+
+    elif agent_name == "IDN_AGENT":
+        # "integrity_flag" from KNU_AGENT should be "ok"
+        knu_integrity_flag = state.get("knu", {}).get("integrity_flag")
+        if knu_integrity_flag != "ok":
+            logger.info(
+                "Validation Failed for IDN_AGENT: because KNU integrity flag is not ok."
+            )
+            # global error
+            error = (
+                "Validation Failed for IDN_AGENT: because KNU integrity flag is not ok."
+            )
             return False
     return True
 
