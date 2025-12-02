@@ -482,6 +482,23 @@ def watchdog_tool(state: State):
     }
 
 
+def check_agent_prerequisites(agent_name: str, state: dict) -> bool:
+    """Checks if the state meets the required prerequisites for the given agent."""
+
+    # Use .get() defensively to avoid KeyError on missing top-level or nested keys
+
+    if agent_name == "INU_AGENT":
+        context_state = state.get("context", {}).get("context_state")
+        # Check for existence and then check the internal state/activity
+        if not context_state or context_state == "active":
+            logger.info(
+                "Validation Failed for INUT_AGENT: Context state is not active."
+            )
+
+            return False
+    return True
+
+
 def route_agents(state: State):
     """Decides the next step: Error Handler, Next Agent, or END."""
 
@@ -492,7 +509,11 @@ def route_agents(state: State):
     if next_agent_index >= len(AGENT_ORDER):
         return END
 
-    return AGENT_ORDER[next_agent_index]
+    next_agent_name = AGENT_ORDER[next_agent_index]
+    if not check_agent_prerequisites(next_agent_name, state):
+        return "error"
+
+    return next_agent_name
 
 
 # Build workflow
