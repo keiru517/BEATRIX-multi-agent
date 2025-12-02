@@ -499,24 +499,34 @@ def watchdog_tool(state: State):
 error = None
 
 
-def check_agent_prerequisites(agent_name: str, state: State) -> bool:
+def check_agent_prerequisites(next_agent_name: str, state: State) -> bool:
     """Checks if the state meets the required prerequisites for the given agent."""
 
     # Use .get() defensively to avoid KeyError on missing top-level or nested keys
 
-    if agent_name == "INU_AGENT":
+    if next_agent_name == "CONTEXT_AGENT":
+        # cqi should be between 0.45 and 0.65 from META_AGENT
+        current_cqi = float(state.get("meta", {}).get("current_cqi"))
+        if current_cqi < 0.45 or current_cqi > 0.65:
+            logger.info(
+                "Validation Failed for CONTEXT_AGENT: because current cqi is not between 0.45 and 0.65."
+            )
+            global error
+            error = "Validation Failed for CONTEXT_AGENT: because current cqi is not between 0.45 and 0.65."
+            return False
+
+    elif next_agent_name == "INU_AGENT":
         context_state = state.get("context", {}).get("context_state")
         # Check for existence and then check the internal state/activity
         if not context_state or context_state != "active":
             logger.info(
                 "Validation Failed for INU_AGENT: because context state of CONTEXT_AGENT is not active."
             )
-            global error
             error = "Validation Failed for INU_AGENT: because context state of CONTEXT_AGENT is not active."
 
             return False
 
-    elif agent_name == "IDN_AGENT":
+    elif next_agent_name == "IDN_AGENT":
         # "integrity_flag" from KNU_AGENT should be "ok"
         knu_integrity_flag = state.get("knu", {}).get("integrity_flag")
         if knu_integrity_flag != "ok":
