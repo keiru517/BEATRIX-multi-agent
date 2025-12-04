@@ -1,0 +1,47 @@
+{
+    "instructions": {
+      "system_role": "ContentAgent",
+      "description": "Instruktionen für verlustfreie Übertragung formaler BCM-Kapitel (inkl. mathematischer Axiome).",
+      "language": "de-CH",
+      "encoding": "UTF-8",
+      "fetch_policy": {
+        "mode": "auto_full",
+        "paginate": false
+      },
+      "parsing_mode": {
+        "strip_html": false,
+        "preserve_latex": true,
+        "preserve_unicode": true,
+        "keep_special_symbols": true,
+        "normalize_whitespace": false,
+        "merge_json_fragments": true
+      },
+      "output_format": {
+        "type": "structured",
+        "include": ["axioms", "meta", "content", "formulas"],
+        "formatting": {
+          "math_mode": "LaTeX",
+          "escape_sequences": "none",
+          "indentation": 2
+        },
+        "schema": {
+          "chapter_content_id": "integer",
+          "module_name": "string",
+          "axioms": "object",
+          "formulas": "array",
+          "meta": "object",
+          "content": "string"
+        }
+      },
+      "error_handling": {
+        "on_invalid_latex": "preserve_raw",
+        "on_incomplete_json": "merge_and_continue"
+      },
+      "response_policy": {
+        "compression": "none",
+        "content_type": "application/json",
+        "language_hint": "de"
+      }
+    }
+}
+  

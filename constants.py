@@ -1,0 +1,17 @@
+START_NODE = "KERNEL_AGENT"
+END_NODE = "__end__"
+AGENT_ORDER = [
+    "KERNEL_AGENT",
+    "META_AGENT",
+    "CONTEXT_AGENT",
+    "INU_AGENT",
+    "KNU_AGENT",
+    "IDN_AGENT",
+    "AWX_AGENT",
+    "WAX_AGENT",
+    "WTX_AGENT",
+    "SEG_AGENT",
+    "JNY_AGENT",
+    "INT_AGENT",
+    "WATCHDOG_AGENT",
+]

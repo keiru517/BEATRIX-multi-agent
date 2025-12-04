@@ -46,7 +46,7 @@ from states import (
 )
 from utils.decorators import error_handler, kernel_tool_decorator, agent_wrapper
 from utils.logger import get_app_logger
-
+from constants import AGENT_ORDER
 
 # Load environment variables from .env file
 # TODO: need to get from environment variables
@@ -60,8 +60,6 @@ llm = ChatOpenAI(
     api_key=os.getenv("OPENAI_API_KEY"),
 )
 
-START_NODE = "META_AGENT"
-END_NODE = "__end__"
 AGENT_ORDER = [
     "KERNEL_AGENT",
     "META_AGENT",
@@ -474,12 +472,12 @@ def watchdog_tool(state: State):
     """
 
     # response = llm.invoke(f"Validate the following intervention: {state['intervention']}")
-    global error
-    if error is not None:
+    global error_message
+    if error_message is not None:
         return {
             **state,
             "next_agent_index": 1,
-            "error": error,
+            "error": error_message,
         }
     else:
         return {
@@ -496,7 +494,7 @@ def watchdog_tool(state: State):
 
 # global error
 # error = None
-error = None
+error_message = None
 
 
 def check_agent_prerequisites(next_agent_name: str, state: State) -> bool:
@@ -511,8 +509,8 @@ def check_agent_prerequisites(next_agent_name: str, state: State) -> bool:
             logger.info(
                 "Validation Failed for CONTEXT_AGENT: because current cqi is not between 0.45 and 0.65."
             )
-            global error
-            error = "Validation Failed for CONTEXT_AGENT: because current cqi is not between 0.45 and 0.65."
+            global error_message
+            error_message = "Validation Failed for CONTEXT_AGENT: because current cqi is not between 0.45 and 0.65."
             return False
 
     elif next_agent_name == "INU_AGENT":
@@ -522,7 +520,7 @@ def check_agent_prerequisites(next_agent_name: str, state: State) -> bool:
             logger.info(
                 "Validation Failed for INU_AGENT: because context state of CONTEXT_AGENT is not active."
             )
-            error = "Validation Failed for INU_AGENT: because context state of CONTEXT_AGENT is not active."
+            error_message = "Validation Failed for INU_AGENT: because context state of CONTEXT_AGENT is not active."
 
             return False
 
@@ -534,7 +532,7 @@ def check_agent_prerequisites(next_agent_name: str, state: State) -> bool:
                 "Validation Failed for IDN_AGENT: because KNU integrity flag is not ok."
             )
             # global error
-            error = (
+            error_message = (
                 "Validation Failed for IDN_AGENT: because KNU integrity flag is not ok."
             )
             return False
@@ -596,74 +594,6 @@ for node_name in AGENT_ORDER:
         },
     )
 
-# workflow.add_conditional_edges(
-#     "KERNEL_AGENT",
-#     route_agents,
-#     {
-#         "error": "WATCHDOG_AGENT",
-#         "END": END,
-#         "META_AGENT": "META_AGENT",
-#     },
-# )
-
-# workflow.add_conditional_edges(
-#     "META_AGENT",
-#     route_agents,
-#     {
-#         "error": "WATCHDOG_AGENT",
-#         "END": END,
-#         "CONTEXT_AGENT": "CONTEXT_AGENT",
-#     },
-# )
-
-# workflow.add_conditional_edges(
-#     "CONTEXT_AGENT",
-#     route_agents,
-#     {
-#         "error": "WATCHDOG_AGENT",
-#         "END": END,
-#         "INU_AGENT": "INU_AGENT",
-#     },
-# )
-
-# workflow.add_conditional_edges(
-#     "INU_AGENT",
-#     route_agents,
-#     {
-#         "error": "WATCHDOG_AGENT",
-#         "END": END,
-#         "KNU_AGENT": "KNU_AGENT",
-#     },
-# )
-
-# workflow.add_edge("KERNEL_AGENT", "META_AGENT")
-# workflow.add_edge("META_AGENT", "CONTEXT_AGENT")
-# workflow.add_edge("CONTEXT_AGENT", "INU_AGENT")
-# workflow.add_edge("INU_AGENT", "KNU_AGENT")
-# workflow.add_edge("KNU_AGENT", "IDN_AGENT")
-# workflow.add_edge("IDN_AGENT", "AWX_AGENT")
-# workflow.add_edge("AWX_AGENT", "WAX_AGENT")
-# workflow.add_edge("WAX_AGENT", "WTX_AGENT")
-# workflow.add_edge("WTX_AGENT", "SEG_AGENT")
-# workflow.add_edge("SEG_AGENT", "JNY_AGENT")
-# workflow.add_edge("JNY_AGENT", "INT_AGENT")
-# workflow.add_edge("INT_AGENT", END)
-
-# workflow.add_conditional_edges(
-#     "generate_joke", check_punchline, {"Fail": "improve_joke", "Pass": END}
-# )
-# workflow.set_entry_point(AGENT_ORDER[0])
-
-
-# workflow.add_conditional_edges(
-#     "WATCHDOG_AGENT",
-#     lambda state: state["next_action"],
-#     {
-#         "REINIT": "KERNEL_AGENT",
-#         "ALERT": "META_AGENT",
-#         "END": END,
-#     },
-# )
 # Compile
 chain = workflow.compile()
 
