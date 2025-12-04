@@ -60,22 +60,6 @@ llm = ChatOpenAI(
     api_key=os.getenv("OPENAI_API_KEY"),
 )
 
-AGENT_ORDER = [
-    "KERNEL_AGENT",
-    "META_AGENT",
-    "CONTEXT_AGENT",
-    "INU_AGENT",
-    "KNU_AGENT",
-    "IDN_AGENT",
-    "AWX_AGENT",
-    "WAX_AGENT",
-    "WTX_AGENT",
-    "SEG_AGENT",
-    "JNY_AGENT",
-    "INT_AGENT",
-    "WATCHDOG_AGENT",
-]
-
 TOTAL_NODES = len(AGENT_ORDER)
 
 

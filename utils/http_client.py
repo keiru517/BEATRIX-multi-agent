@@ -8,7 +8,9 @@ logger = get_app_logger(__name__)
 class HTTPClient:
     """Handles HTTP GET and POST requests for BEATRIX."""
 
-    def __init__(self, base_url: str = "", timeout: int = 10):
+    def __init__(
+        self, base_url: str = "", timeout: int = 10, auth_token: Optional[str] = None
+    ):
         """
         Initialize HTTP client.
 
@@ -19,6 +21,16 @@ class HTTPClient:
         self.base_url = base_url
         self.timeout = timeout
         self.session = requests.Session()
+        if auth_token:
+            self.set_bearer_token(auth_token)
+
+    def set_bearer_token(self, token: Optional[str]) -> None:
+        """Set or clear the Authorization: Bearer <token> header on the session."""
+        if token:
+            self.session.headers.update({"Authorization": f"Bearer {token}"})
+        else:
+            # remove header if token is None/empty
+            self.session.headers.pop("Authorization", None)
 
     def get(
         self, endpoint: str, params: Optional[Dict[str, Any]] = None
