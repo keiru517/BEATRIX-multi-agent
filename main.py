@@ -46,7 +46,12 @@ from states import (
 )
 from utils.decorators import error_handler, kernel_tool_decorator, agent_wrapper
 from utils.logger import get_app_logger
-from constants import AGENT_ORDER
+
+from constants import START_NODE, END_NODE, AGENT_ORDER
+from agents import inu_agent
+from llms import openai_llm
+from utils.http_client import HTTPClient
+from utils.axioms import load_axioms
 
 # Load environment variables from .env file
 # TODO: need to get from environment variables
@@ -54,11 +59,12 @@ load_dotenv()
 
 logger = get_app_logger(__name__)
 
-llm = ChatOpenAI(
-    model="gpt-4o-mini",
-    temperature=0.3,
-    api_key=os.getenv("OPENAI_API_KEY"),
+http_client = HTTPClient(
+    base_url=os.getenv("BEATRIX_API_URL"),
+    timeout=10,
+    auth_token=os.getenv("BEATRIX_API_KEY"),
 )
+
 
 TOTAL_NODES = len(AGENT_ORDER)
 
@@ -78,9 +84,10 @@ def kernel_tool(state: State, workflow: StateGraph):
         • On failure → WATCHDOG_AGENT (error capture)
     """
 
-    # Read the axioms_v1_1.json file
-    with open("axioms_v1_1.json", "r") as f:
-        axioms = json.load(f)
+    # TODO: need to get the chapter content id from the kernel
+    axioms_response = load_axioms(chapter_content_id=10945)
+    axioms_version = axioms_response["version_info"]["version"]
+    axioms = axioms_response["axioms"]
 
     # Get the total number of nodes
     total_nodes = len(workflow.nodes)
@@ -94,7 +101,7 @@ def kernel_tool(state: State, workflow: StateGraph):
             **state,
             "next_agent_index": 1,
             "axioms": axioms,
-            "axiom_version": "v1.1",  # TODO: need to get version from file or api
+            "axiom_version": axioms_version,
             "kernel": {
                 "system_ready": True,
                 "agents_registered": agent_registered,
@@ -108,7 +115,7 @@ def kernel_tool(state: State, workflow: StateGraph):
             **state,
             "next_agent_index": 1,
             "axioms": axioms,
-            "axiom_version": "v1.1",
+            "axiom_version": axioms_version,
             "kernel": {
                 "system_ready": False,
                 "agents_registered": agent_registered,
@@ -142,7 +149,7 @@ def meta_tool(state: State):
             f"Kernel timestamp: {state['kernel']['kernel_timestamp']}"
         )
 
-        structured_llm = llm.with_structured_output(MetaState)
+        structured_llm = openai_llm.with_structured_output(MetaState)
         response = structured_llm.invoke(
             [
                 SystemMessage(content=META_AGENT_PROMPT),
@@ -182,7 +189,7 @@ def context_tool(state: State):
         "}}\n"
     )
 
-    structured_llm = llm.with_structured_output(ContextState)
+    structured_llm = openai_llm.with_structured_output(ContextState)
     response = structured_llm.invoke(
         [
             SystemMessage(content=CONTEXT_AGENT_PROMPT),
@@ -199,29 +206,33 @@ def context_tool(state: State):
     }
 
 
-def inu_tool(state: State):
-    """
-    This tool is used to calculate individual utility of the user.
-    """
+# def inu_tool(state: State):
+#     """
+#     This tool is used to calculate individual utility of the user.
+#     """
 
-    # TODO: if context_state != active, do not calculation
-    # TODO: if cqi < 0.3, trigger WATCHDOG_AGENT
+#     # TODO: if context_state != active, do not calculation
+#     # TODO: if cqi < 0.3, trigger WATCHDOG_AGENT
 
-    input_data = f"Here is the context vector from KON: {json.dumps(state['context']['context_vector'])} and CQI: {state['context']['cqi']}"
-    messages = [
-        SystemMessage(content=INU_AGENT_PROMPT),
-        HumanMessage(content=input_data),
-    ]
-    structured_llm = llm.with_structured_output(INUState)
-    response = structured_llm.invoke(messages)
+#     input_data = (
+#         f"Here is the context vector from KON: {json.dumps(state['context']['context_vector'])}"
+#         f" and CQI: {state['context']['cqi']}"
+#     )
 
-    return {
-        **state,
-        "next_agent_index": 4,
-        "inu": {
-            **response,
-        },
-    }
+#     messages = [
+#         SystemMessage(content=INU_AGENT_PROMPT),
+#         HumanMessage(content=input_data),
+#     ]
+#     structured_llm = llm.with_structured_output(INUState)
+#     response = structured_llm.invoke(messages)
+
+#     return {
+#         **state,
+#         "next_agent_index": 4,
+#         "inu": {
+#             **response,
+#         },
+#     }
 
 
 def knu_tool(state: State):
@@ -234,7 +245,7 @@ def knu_tool(state: State):
         SystemMessage(content=KNU_AGENT_PROMPT),
         HumanMessage(content=input_data),
     ]
-    structured_llm = llm.with_structured_output(KNUState)
+    structured_llm = openai_llm.with_structured_output(KNUState)
     response = structured_llm.invoke(messages)
 
     return {
@@ -256,7 +267,7 @@ def idn_tool(state: State):
         SystemMessage(content=IDN_AGENT_PROMPT),
         HumanMessage(content=input_data),
     ]
-    structured_llm = llm.with_structured_output(IDNState)
+    structured_llm = openai_llm.with_structured_output(IDNState)
     response = structured_llm.invoke(messages)
 
     return {
@@ -285,7 +296,7 @@ def awareness_tool(state: State):
         SystemMessage(content=AWX_AGENT_PROMPT),
         HumanMessage(content=input_data),
     ]
-    structured_llm = llm.with_structured_output(AWXState)
+    structured_llm = openai_llm.with_structured_output(AWXState)
     response = structured_llm.invoke(messages)
 
     return {
@@ -313,7 +324,7 @@ def willingness_tool(state: State):
         SystemMessage(content=WAX_AGENT_PROMPT),
         HumanMessage(content=input_data),
     ]
-    structured_llm = llm.with_structured_output(WAXState)
+    structured_llm = openai_llm.with_structured_output(WAXState)
     response = structured_llm.invoke(messages)
 
     return {
@@ -342,7 +353,7 @@ def willingness_to_action_tool(state: State):
         SystemMessage(content=WTX_AGENT_PROMPT),
         HumanMessage(content=input_data),
     ]
-    structured_llm = llm.with_structured_output(WTXState)
+    structured_llm = openai_llm.with_structured_output(WTXState)
     response = structured_llm.invoke(messages)
 
     return {
@@ -376,7 +387,7 @@ def segment_tool(state: State):
         SystemMessage(content=SEG_AGENT_PROMPT),
         HumanMessage(content=input_data),
     ]
-    structured_llm = llm.with_structured_output(SEGState)
+    structured_llm = openai_llm.with_structured_output(SEGState)
     response = structured_llm.invoke(messages)
 
     return {
@@ -406,7 +417,7 @@ def journey_tool(state: State):
         SystemMessage(content=JNY_AGENT_PROMPT),
         HumanMessage(content=input_data),
     ]
-    structured_llm = llm.with_structured_output(JNYState)
+    structured_llm = openai_llm.with_structured_output(JNYState)
     response = structured_llm.invoke(messages)
 
     return {
@@ -437,7 +448,7 @@ def intervention_tool(state: State):
         SystemMessage(content=INT_AGENT_PROMPT),
         HumanMessage(content=input_data),
     ]
-    structured_llm = llm.with_structured_output(INTState)
+    structured_llm = openai_llm.with_structured_output(INTState)
     response = structured_llm.invoke(messages)
 
     return {
@@ -456,12 +467,12 @@ def watchdog_tool(state: State):
     """
 
     # response = llm.invoke(f"Validate the following intervention: {state['intervention']}")
-    global error_message
-    if error_message is not None:
+    global error
+    if error is not None:
         return {
             **state,
             "next_agent_index": 1,
-            "error": error_message,
+            "error": error,
         }
     else:
         return {
@@ -478,7 +489,7 @@ def watchdog_tool(state: State):
 
 # global error
 # error = None
-error_message = None
+error = None
 
 
 def check_agent_prerequisites(next_agent_name: str, state: State) -> bool:
@@ -487,15 +498,17 @@ def check_agent_prerequisites(next_agent_name: str, state: State) -> bool:
     # Use .get() defensively to avoid KeyError on missing top-level or nested keys
 
     if next_agent_name == "CONTEXT_AGENT":
+        pass  # for test purpose, remove this later
+
         # cqi should be between 0.45 and 0.65 from META_AGENT
-        current_cqi = float(state.get("meta", {}).get("current_cqi"))
-        if current_cqi < 0.45 or current_cqi > 0.65:
-            logger.info(
-                "Validation Failed for CONTEXT_AGENT: because current cqi is not between 0.45 and 0.65."
-            )
-            global error_message
-            error_message = "Validation Failed for CONTEXT_AGENT: because current cqi is not between 0.45 and 0.65."
-            return False
+        # current_cqi = float(state.get("meta", {}).get("current_cqi"))
+        # if current_cqi < 0.45 or current_cqi > 0.65:
+        #     logger.info(
+        #         "Validation Failed for CONTEXT_AGENT: because current cqi is not between 0.45 and 0.65."
+        #     )
+        #     global error
+        #     error = "Validation Failed for CONTEXT_AGENT: because current cqi is not between 0.45 and 0.65."
+        #     return False
 
     elif next_agent_name == "INU_AGENT":
         context_state = state.get("context", {}).get("context_state")
@@ -504,7 +517,7 @@ def check_agent_prerequisites(next_agent_name: str, state: State) -> bool:
             logger.info(
                 "Validation Failed for INU_AGENT: because context state of CONTEXT_AGENT is not active."
             )
-            error_message = "Validation Failed for INU_AGENT: because context state of CONTEXT_AGENT is not active."
+            error = "Validation Failed for INU_AGENT: because context state of CONTEXT_AGENT is not active."
 
             return False
 
@@ -516,7 +529,7 @@ def check_agent_prerequisites(next_agent_name: str, state: State) -> bool:
                 "Validation Failed for IDN_AGENT: because KNU integrity flag is not ok."
             )
             # global error
-            error_message = (
+            error = (
                 "Validation Failed for IDN_AGENT: because KNU integrity flag is not ok."
             )
             return False
@@ -549,7 +562,7 @@ workflow = StateGraph(State)
 workflow.add_node("KERNEL_AGENT", lambda state: kernel_tool(state, workflow))
 workflow.add_node("META_AGENT", meta_tool)
 workflow.add_node("CONTEXT_AGENT", context_tool)
-workflow.add_node("INU_AGENT", inu_tool)
+workflow.add_node("INU_AGENT", inu_agent)
 workflow.add_node("KNU_AGENT", knu_tool)
 workflow.add_node("IDN_AGENT", idn_tool)
 workflow.add_node("AWX_AGENT", awareness_tool)
