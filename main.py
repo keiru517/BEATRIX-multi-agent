@@ -212,59 +212,37 @@ def inu_agent(state: State):
     This tool is used to calculate individual utility of the user.
     """
 
+    AXIOM_CONFIG = {
+        "social": {"threshold": 0.5, "axiom_id": "L-52"},
+        "risk": {"threshold": 0.4, "axiom_id": "L-12"},
+        "stress": {"threshold": 0.6, "axiom_id": "L-59"},
+        "complexity": {"threshold": 0.7, "axiom_id": "L-61"},
+        "informational": {"threshold": 0.6, "axiom_id": "L-11"},
+        "institutional": {"threshold": 0.8, "axiom_id": "L-20"},
+    }
+    axiom_map = {
+        x.get("execution_step"): x
+        for x in state.get("axioms", [])
+        if x and x.get("execution_step")  # Ensure it's not None and has the key
+    }
+
     context_vector = state["context"]["context_vector"]
     axioms_list = []
     L_00 = next((x for x in state["axioms"] if x.get("execution_step") == "L-00"), None)
     axioms_list.append(L_00)
-    for vector in context_vector.keys():
-        # TODO: need to check the exact numbers and axiom id, just for flow
-        if vector == "social" and context_vector[vector] > 0.5:
-            axioms_list.append(
-                next(
-                    (x for x in state["axioms"] if x.get("execution_step") == "L-52"),
-                    None,
-                )
-            )
-        if vector == "risk" and context_vector[vector] > 0.4:
-            axioms_list.append(
-                next(
-                    (x for x in state["axioms"] if x.get("execution_step") == "L-12"),
-                    None,
-                )
-            )
-        if vector == "stress" and context_vector[vector] > 0.6:
-            axioms_list.append(
-                next(
-                    (x for x in state["axioms"] if x.get("execution_step") == "L-59"),
-                    None,
-                )
-            )
-        if vector == "complexity" and context_vector[vector] > 0.7:
-            axioms_list.append(
-                next(
-                    (x for x in state["axioms"] if x.get("execution_step") == "L-61"),
-                    None,
-                )
-            )
-        if vector == "informational" and context_vector[vector] > 0.6:
-            axioms_list.append(
-                next(
-                    (x for x in state["axioms"] if x.get("execution_step") == "L-11"),
-                    None,
-                )
-            )
-        if vector == "institutional" and context_vector[vector] > 0.8:
-            axioms_list.append(
-                next(
-                    (x for x in state["axioms"] if x.get("execution_step") == "L-20"),
-                    None,
-                )
-            )
+
+    for vector, value in context_vector.items():
+        config = AXIOM_CONFIG.get(vector)
+        if config and value > config["threshold"]:
+            axiom_id = config["axiom_id"]
+            axiom = axiom_map.get(axiom_id)
+            if axiom:
+                axioms_list.append(axiom)
 
     input_data = (
-        f"Here is the context vector from KON: {json.dumps(state['context']['context_vector'])}"
+        f"Here is the context vector from KON: {context_vector}"
         f" and CQI: {state['context']['cqi']}"
-        f" and Axioms: {json.dumps(axioms_list)}"
+        # f" and Axioms: {json.dumps(axioms_list)}"
     )
 
     messages = [
