@@ -173,6 +173,7 @@ def meta_tool(state: State):
         }
 
 
+# TODO: need to integrate API
 def context_tool(state: State):
     """
     This tool is used to Transform a contextual input (provided as structured JSON) into
@@ -212,6 +213,7 @@ def inu_agent(state: State):
     This tool is used to calculate individual utility of the user.
     """
 
+    # TODO: need to use correct threshold
     AXIOM_CONFIG = {
         "social": {"threshold": 0.5, "axiom_id": "L-52"},
         "risk": {"threshold": 0.4, "axiom_id": "L-12"},
@@ -259,35 +261,6 @@ def inu_agent(state: State):
             **response,
         },
     }
-
-
-# def inu_tool(state: State):
-#     """
-#     This tool is used to calculate individual utility of the user.
-#     """
-
-#     # TODO: if context_state != active, do not calculation
-#     # TODO: if cqi < 0.3, trigger WATCHDOG_AGENT
-
-#     input_data = (
-#         f"Here is the context vector from KON: {json.dumps(state['context']['context_vector'])}"
-#         f" and CQI: {state['context']['cqi']}"
-#     )
-
-#     messages = [
-#         SystemMessage(content=INU_AGENT_PROMPT),
-#         HumanMessage(content=input_data),
-#     ]
-#     structured_llm = llm.with_structured_output(INUState)
-#     response = structured_llm.invoke(messages)
-
-#     return {
-#         **state,
-#         "next_agent_index": 4,
-#         "inu": {
-#             **response,
-#         },
-#     }
 
 
 def knu_tool(state: State):
