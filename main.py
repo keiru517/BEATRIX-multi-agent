@@ -48,7 +48,8 @@ from utils.decorators import error_handler, kernel_tool_decorator, agent_wrapper
 from utils.logger import get_app_logger
 
 from constants import START_NODE, END_NODE, AGENT_ORDER
-from agents import inu_agent
+
+# from agents import inu_agent
 from llms import openai_llm
 from utils.http_client import HTTPClient
 from utils.axioms import load_axioms
@@ -201,6 +202,82 @@ def context_tool(state: State):
         **state,
         "next_agent_index": 3,
         "context": {
+            **response,
+        },
+    }
+
+
+def inu_agent(state: State):
+    """
+    This tool is used to calculate individual utility of the user.
+    """
+
+    context_vector = state["context"]["context_vector"]
+    axioms_list = []
+    L_00 = next((x for x in state["axioms"] if x.get("execution_step") == "L-00"), None)
+    axioms_list.append(L_00)
+    for vector in context_vector.keys():
+        # TODO: need to check the exact numbers and axiom id, just for flow
+        if vector == "social" and context_vector[vector] > 0.5:
+            axioms_list.append(
+                next(
+                    (x for x in state["axioms"] if x.get("execution_step") == "L-52"),
+                    None,
+                )
+            )
+        if vector == "risk" and context_vector[vector] > 0.4:
+            axioms_list.append(
+                next(
+                    (x for x in state["axioms"] if x.get("execution_step") == "L-12"),
+                    None,
+                )
+            )
+        if vector == "stress" and context_vector[vector] > 0.6:
+            axioms_list.append(
+                next(
+                    (x for x in state["axioms"] if x.get("execution_step") == "L-59"),
+                    None,
+                )
+            )
+        if vector == "complexity" and context_vector[vector] > 0.7:
+            axioms_list.append(
+                next(
+                    (x for x in state["axioms"] if x.get("execution_step") == "L-61"),
+                    None,
+                )
+            )
+        if vector == "informational" and context_vector[vector] > 0.6:
+            axioms_list.append(
+                next(
+                    (x for x in state["axioms"] if x.get("execution_step") == "L-11"),
+                    None,
+                )
+            )
+        if vector == "institutional" and context_vector[vector] > 0.8:
+            axioms_list.append(
+                next(
+                    (x for x in state["axioms"] if x.get("execution_step") == "L-20"),
+                    None,
+                )
+            )
+
+    input_data = (
+        f"Here is the context vector from KON: {json.dumps(state['context']['context_vector'])}"
+        f" and CQI: {state['context']['cqi']}"
+        f" and Axioms: {json.dumps(axioms_list)}"
+    )
+
+    messages = [
+        SystemMessage(content=INU_AGENT_PROMPT),
+        HumanMessage(content=input_data),
+    ]
+    structured_llm = openai_llm.with_structured_output(INUState)
+    response = structured_llm.invoke(messages)
+
+    return {
+        **state,
+        "next_agent_index": 4,
+        "inu": {
             **response,
         },
     }
@@ -498,17 +575,17 @@ def check_agent_prerequisites(next_agent_name: str, state: State) -> bool:
     # Use .get() defensively to avoid KeyError on missing top-level or nested keys
 
     if next_agent_name == "CONTEXT_AGENT":
-        pass  # for test purpose, remove this later
 
         # cqi should be between 0.45 and 0.65 from META_AGENT
-        # current_cqi = float(state.get("meta", {}).get("current_cqi"))
-        # if current_cqi < 0.45 or current_cqi > 0.65:
-        #     logger.info(
-        #         "Validation Failed for CONTEXT_AGENT: because current cqi is not between 0.45 and 0.65."
-        #     )
-        #     global error
-        #     error = "Validation Failed for CONTEXT_AGENT: because current cqi is not between 0.45 and 0.65."
-        #     return False
+        current_cqi = float(state.get("meta", {}).get("current_cqi"))
+        if current_cqi < 0.45 or current_cqi > 0.65:
+            logger.info(
+                "Validation Failed for CONTEXT_AGENT: because current cqi is not between 0.45 and 0.65."
+            )
+            global error
+            error = "Validation Failed for CONTEXT_AGENT: because current cqi is not between 0.45 and 0.65."
+            # TODO: need to change into False later
+            return True
 
     elif next_agent_name == "INU_AGENT":
         context_state = state.get("context", {}).get("context_state")
