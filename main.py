@@ -53,6 +53,7 @@ from constants import START_NODE, END_NODE, AGENT_ORDER
 from llms import openai_llm
 from utils.http_client import HTTPClient
 from utils.axioms import load_axioms
+from utils.github import read_github_json
 
 # Load environment variables from .env file
 # TODO: need to get from environment variables
@@ -68,6 +69,35 @@ http_client = HTTPClient(
 
 
 TOTAL_NODES = len(AGENT_ORDER)
+
+
+def _load_module_data():
+    OWNER = "FehrAdvice-Partners-AG"
+    REPO = "beatrix-api"
+    BRANCH = "feat/schema"
+    TOKEN = os.getenv("GITHUB_TOKEN")
+    MODULE_PATHS = [
+        "awx/awx.json",
+        "context/context.json",
+        "idn/idn.json",
+        "int/int.json",
+        "inu/inu.json",
+        "jny/jny.json",
+        "knu/knu.json",
+        "meta/meta.json",
+        "seg/seg.json",
+        "wax/wax.json",
+        "wtx/wtx.json",
+    ]
+    modules = {}
+    for path in MODULE_PATHS:
+        data = read_github_json(OWNER, REPO, BRANCH, path, TOKEN)
+        if data:
+            modules[path.split("/")[0].upper()] = data
+        else:
+            logger.error(f"Failed to read module data from {path}")
+            return None
+    return modules
 
 
 # Nodes
@@ -86,9 +116,14 @@ def kernel_tool(state: State, workflow: StateGraph):
     """
 
     # TODO: need to get the chapter content id from the kernel
-    axioms_response = load_axioms(chapter_content_id=10945)
-    axioms_version = axioms_response["version_info"]["version"]
-    axioms = axioms_response["axioms"]
+    modules = _load_module_data()
+    if modules is None:
+        logger.error("kernel_tool: failed to load module data")
+        return {
+            **state,
+            "next_agent_index": 1,
+            "error": "Failed to load module data",
+        }
 
     # Get the total number of nodes
     total_nodes = len(workflow.nodes)
@@ -100,9 +135,8 @@ def kernel_tool(state: State, workflow: StateGraph):
         logger.info("kernel_tool: all modules are here and in the right order")
         return {
             **state,
+            "modules": modules,
             "next_agent_index": 1,
-            "axioms": axioms,
-            "axiom_version": axioms_version,
             "kernel": {
                 "system_ready": True,
                 "agents_registered": agent_registered,
@@ -114,9 +148,8 @@ def kernel_tool(state: State, workflow: StateGraph):
         logger.error("kernel_tool: all modules are not here or in the right order")
         return {
             **state,
+            "modules": modules,
             "next_agent_index": 1,
-            "axioms": axioms,
-            "axiom_version": axioms_version,
             "kernel": {
                 "system_ready": False,
                 "agents_registered": agent_registered,

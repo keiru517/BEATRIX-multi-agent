@@ -19,9 +19,8 @@ class State(TypedDict):
     user_message: str
     total_nodes: int
     node_order: list[str]
+    modules: dict[str, dict[str, str]]
     next_agent_index: int
-    axioms: dict[str, str]
-    axiom_version: str
     kernel: KernelState
     meta: MetaState
     context: ContextState
