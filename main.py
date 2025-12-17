@@ -53,6 +53,7 @@ from constants import START_NODE, END_NODE, AGENT_ORDER
 from llms import openai_llm
 from utils.http_client import HTTPClient
 from utils.axioms import load_axioms
+from utils.github import read_github_json
 
 # Load environment variables from .env file
 # TODO: need to get from environment variables
@@ -68,6 +69,35 @@ http_client = HTTPClient(
 
 
 TOTAL_NODES = len(AGENT_ORDER)
+
+
+def _load_module_data():
+    OWNER = "FehrAdvice-Partners-AG"
+    REPO = "beatrix-api"
+    BRANCH = "feat/schema"
+    TOKEN = os.getenv("GITHUB_TOKEN")
+    MODULE_PATHS = [
+        "awx/awx.json",
+        "context/context.json",
+        "idn/idn.json",
+        "int/int.json",
+        "inu/inu.json",
+        "jny/jny.json",
+        "knu/knu.json",
+        "meta/meta.json",
+        "seg/seg.json",
+        "wax/wax.json",
+        "wtx/wtx.json",
+    ]
+    modules = {}
+    for path in MODULE_PATHS:
+        data = read_github_json(OWNER, REPO, BRANCH, path, TOKEN)
+        if data:
+            modules[path.split("/")[0].upper()] = data
+        else:
+            logger.error(f"Failed to read module data from {path}")
+            return None
+    return modules
 
 
 # Nodes
@@ -86,9 +116,14 @@ def kernel_tool(state: State, workflow: StateGraph):
     """
 
     # TODO: need to get the chapter content id from the kernel
-    axioms_response = load_axioms(chapter_content_id=10945)
-    axioms_version = axioms_response["version_info"]["version"]
-    axioms = axioms_response["axioms"]
+    modules = _load_module_data()
+    if modules is None:
+        logger.error("kernel_tool: failed to load module data")
+        return {
+            **state,
+            "next_agent_index": 1,
+            "error": "Failed to load module data",
+        }
 
     # Get the total number of nodes
     total_nodes = len(workflow.nodes)
@@ -100,9 +135,8 @@ def kernel_tool(state: State, workflow: StateGraph):
         logger.info("kernel_tool: all modules are here and in the right order")
         return {
             **state,
+            "modules": modules,
             "next_agent_index": 1,
-            "axioms": axioms,
-            "axiom_version": axioms_version,
             "kernel": {
                 "system_ready": True,
                 "agents_registered": agent_registered,
@@ -114,9 +148,8 @@ def kernel_tool(state: State, workflow: StateGraph):
         logger.error("kernel_tool: all modules are not here or in the right order")
         return {
             **state,
+            "modules": modules,
             "next_agent_index": 1,
-            "axioms": axioms,
-            "axiom_version": axioms_version,
             "kernel": {
                 "system_ready": False,
                 "agents_registered": agent_registered,
@@ -173,6 +206,7 @@ def meta_tool(state: State):
         }
 
 
+# TODO: need to integrate API
 def context_tool(state: State):
     """
     This tool is used to Transform a contextual input (provided as structured JSON) into
@@ -212,59 +246,38 @@ def inu_agent(state: State):
     This tool is used to calculate individual utility of the user.
     """
 
+    # TODO: need to use correct threshold
+    AXIOM_CONFIG = {
+        "social": {"threshold": 0.5, "axiom_id": "L-52"},
+        "risk": {"threshold": 0.4, "axiom_id": "L-12"},
+        "stress": {"threshold": 0.6, "axiom_id": "L-59"},
+        "complexity": {"threshold": 0.7, "axiom_id": "L-61"},
+        "informational": {"threshold": 0.6, "axiom_id": "L-11"},
+        "institutional": {"threshold": 0.8, "axiom_id": "L-20"},
+    }
+    axiom_map = {
+        x.get("execution_step"): x
+        for x in state.get("axioms", [])
+        if x and x.get("execution_step")  # Ensure it's not None and has the key
+    }
+
     context_vector = state["context"]["context_vector"]
     axioms_list = []
     L_00 = next((x for x in state["axioms"] if x.get("execution_step") == "L-00"), None)
     axioms_list.append(L_00)
-    for vector in context_vector.keys():
-        # TODO: need to check the exact numbers and axiom id, just for flow
-        if vector == "social" and context_vector[vector] > 0.5:
-            axioms_list.append(
-                next(
-                    (x for x in state["axioms"] if x.get("execution_step") == "L-52"),
-                    None,
-                )
-            )
-        if vector == "risk" and context_vector[vector] > 0.4:
-            axioms_list.append(
-                next(
-                    (x for x in state["axioms"] if x.get("execution_step") == "L-12"),
-                    None,
-                )
-            )
-        if vector == "stress" and context_vector[vector] > 0.6:
-            axioms_list.append(
-                next(
-                    (x for x in state["axioms"] if x.get("execution_step") == "L-59"),
-                    None,
-                )
-            )
-        if vector == "complexity" and context_vector[vector] > 0.7:
-            axioms_list.append(
-                next(
-                    (x for x in state["axioms"] if x.get("execution_step") == "L-61"),
-                    None,
-                )
-            )
-        if vector == "informational" and context_vector[vector] > 0.6:
-            axioms_list.append(
-                next(
-                    (x for x in state["axioms"] if x.get("execution_step") == "L-11"),
-                    None,
-                )
-            )
-        if vector == "institutional" and context_vector[vector] > 0.8:
-            axioms_list.append(
-                next(
-                    (x for x in state["axioms"] if x.get("execution_step") == "L-20"),
-                    None,
-                )
-            )
+
+    for vector, value in context_vector.items():
+        config = AXIOM_CONFIG.get(vector)
+        if config and value > config["threshold"]:
+            axiom_id = config["axiom_id"]
+            axiom = axiom_map.get(axiom_id)
+            if axiom:
+                axioms_list.append(axiom)
 
     input_data = (
-        f"Here is the context vector from KON: {json.dumps(state['context']['context_vector'])}"
+        f"Here is the context vector from KON: {context_vector}"
         f" and CQI: {state['context']['cqi']}"
-        f" and Axioms: {json.dumps(axioms_list)}"
+        # f" and Axioms: {json.dumps(axioms_list)}"
     )
 
     messages = [
@@ -281,35 +294,6 @@ def inu_agent(state: State):
             **response,
         },
     }
-
-
-# def inu_tool(state: State):
-#     """
-#     This tool is used to calculate individual utility of the user.
-#     """
-
-#     # TODO: if context_state != active, do not calculation
-#     # TODO: if cqi < 0.3, trigger WATCHDOG_AGENT
-
-#     input_data = (
-#         f"Here is the context vector from KON: {json.dumps(state['context']['context_vector'])}"
-#         f" and CQI: {state['context']['cqi']}"
-#     )
-
-#     messages = [
-#         SystemMessage(content=INU_AGENT_PROMPT),
-#         HumanMessage(content=input_data),
-#     ]
-#     structured_llm = llm.with_structured_output(INUState)
-#     response = structured_llm.invoke(messages)
-
-#     return {
-#         **state,
-#         "next_agent_index": 4,
-#         "inu": {
-#             **response,
-#         },
-#     }
 
 
 def knu_tool(state: State):
