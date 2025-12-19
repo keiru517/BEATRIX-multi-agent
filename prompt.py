@@ -68,9 +68,11 @@ META_AGENT_PROMPT = """
 """
 
 CONTEXT_AGENT_PROMPT = """
-    You are the CONTEXT_AGENT of the BEATRIX architecture.
-    Your role is to operationalize the contextual layer defined in BCM2_04_KON8904.
-    You evaluate the structural environment in which all downstream agents (INU, KNU, IDN, AWX, WAX, SEG) operate.
+    You are the Context Agent (CKON {id}) in the BEATRIX / BCM 2.0 architecture.
+    Context Axiom version: {version}
+
+    Objective: {objective}
+    
     Your primary task:
     Transform a contextual input (provided as structured JSON) into a simplified 4-dimensional context modulation vector.
 

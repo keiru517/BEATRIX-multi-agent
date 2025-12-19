@@ -228,11 +228,16 @@ def meta_agent(state: State):
 
 
 # TODO: need to integrate API
-def context_tool(state: State):
+def context_agent(state: State):
     """
     This tool is used to Transform a contextual input (provided as structured JSON) into
     a simplified 4-dimensional context modulation vector.
     """
+    modules = state.get("modules", None)
+    module_id = modules["CONTEXT"]["module"]["id"]
+    version = modules["CONTEXT"]["module"]["version"]
+    objective = modules["CONTEXT"]["sections"]["A3"]["text"]
+    cycle_number = state["cycle_number"]
 
     input_data = (
         f"kernel_status: {state['meta']['kernel_status']}\n"
@@ -248,7 +253,11 @@ def context_tool(state: State):
     structured_llm = openai_llm.with_structured_output(ContextState)
     response = structured_llm.invoke(
         [
-            SystemMessage(content=CONTEXT_AGENT_PROMPT),
+            SystemMessage(
+                content=CONTEXT_AGENT_PROMPT.format(
+                    id=module_id, version=version, objective=objective
+                )
+            ),
             HumanMessage(content=input_data),
         ]
     )
@@ -645,7 +654,7 @@ workflow = StateGraph(State)
 # Add nodes
 workflow.add_node("KERNEL_AGENT", lambda state: kernel_tool(state, workflow))
 workflow.add_node("META_AGENT", meta_agent)
-workflow.add_node("CONTEXT_AGENT", context_tool)
+workflow.add_node("CONTEXT_AGENT", context_agent)
 workflow.add_node("INU_AGENT", inu_agent)
 workflow.add_node("KNU_AGENT", knu_tool)
 workflow.add_node("IDN_AGENT", idn_tool)
