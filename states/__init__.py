@@ -20,6 +20,7 @@ class State(TypedDict):
     total_nodes: int
     node_order: list[str]
     modules: dict[str, dict[str, str]]
+    cycle_number: int
     next_agent_index: int
     kernel: KernelState
     meta: MetaState

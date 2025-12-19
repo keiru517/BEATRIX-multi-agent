@@ -6,10 +6,10 @@ from langgraph.graph import StateGraph, START, END
 
 # from IPython.display import Image, display
 from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import (
     SystemMessage,
     HumanMessage,
-    AIMessage,
 )
 from dotenv import load_dotenv
 
@@ -44,16 +44,14 @@ from states import (
     INTState,
     WatchdogState,
 )
-from utils.decorators import error_handler, kernel_tool_decorator, agent_wrapper
 from utils.logger import get_app_logger
 
 from constants import START_NODE, END_NODE, AGENT_ORDER
 
-# from agents import inu_agent
 from llms import openai_llm
 from utils.http_client import HTTPClient
-from utils.axioms import load_axioms
-from utils.github import read_github_json
+from utils.loaders import load_module_data
+
 
 # Load environment variables from .env file
 # TODO: need to get from environment variables
@@ -69,35 +67,6 @@ http_client = HTTPClient(
 
 
 TOTAL_NODES = len(AGENT_ORDER)
-
-
-def _load_module_data():
-    OWNER = "FehrAdvice-Partners-AG"
-    REPO = "beatrix-api"
-    BRANCH = "feat/schema"
-    TOKEN = os.getenv("GITHUB_TOKEN")
-    MODULE_PATHS = [
-        "awx/awx.json",
-        "context/context.json",
-        "idn/idn.json",
-        "int/int.json",
-        "inu/inu.json",
-        "jny/jny.json",
-        "knu/knu.json",
-        "meta/meta.json",
-        "seg/seg.json",
-        "wax/wax.json",
-        "wtx/wtx.json",
-    ]
-    modules = {}
-    for path in MODULE_PATHS:
-        data = read_github_json(OWNER, REPO, BRANCH, path, TOKEN)
-        if data:
-            modules[path.split("/")[0].upper()] = data
-        else:
-            logger.error(f"Failed to read module data from {path}")
-            return None
-    return modules
 
 
 # Nodes
@@ -116,11 +85,12 @@ def kernel_tool(state: State, workflow: StateGraph):
     """
 
     # TODO: need to get the chapter content id from the kernel
-    modules = _load_module_data()
+    modules = load_module_data()
     if modules is None:
         logger.error("kernel_tool: failed to load module data")
         return {
             **state,
+            "cycle_number": 1,  # this will be updated by the watchdog agent
             "next_agent_index": 1,
             "error": "Failed to load module data",
         }
@@ -135,6 +105,7 @@ def kernel_tool(state: State, workflow: StateGraph):
         logger.info("kernel_tool: all modules are here and in the right order")
         return {
             **state,
+            "cycle_number": 1,
             "modules": modules,
             "next_agent_index": 1,
             "kernel": {
@@ -148,6 +119,7 @@ def kernel_tool(state: State, workflow: StateGraph):
         logger.error("kernel_tool: all modules are not here or in the right order")
         return {
             **state,
+            "cycle_number": 1,
             "modules": modules,
             "next_agent_index": 1,
             "kernel": {
@@ -159,51 +131,100 @@ def kernel_tool(state: State, workflow: StateGraph):
         }
 
 
-def meta_tool(state: State):
+def meta_agent(state: State):
     """Gate function to check if the initialization is successful."""
+    # TODO: current_cqi and integrity_flag will be added later
 
-    axioms = state.get("axioms", None)
-    # TODO: need to use a variable for axiom length
-    if axioms is None or len(axioms) < 10:
+    def _validate_axioms():
+        """Validate the axioms of 11 modules."""
+
+        for agent_name in AGENT_ORDER[1:11]:
+            module_name = agent_name.split("_")[0].upper()
+
+            # TODO: need to do error handling for missing module or axioms
+            # module_axioms = state["modules"][module_name]["module"]["sections"]["A4"][
+            #     "axioms"
+            # ]
+            module_axioms = (
+                state.get("modules", {})
+                .get(module_name, {})
+                .get("sections", {})
+                .get("A4", {})
+                .get("axioms")
+            )
+            print(module_axioms)
+            if not module_axioms or len(module_axioms) < 10:
+                return False, f"Incomplete {module_name} axioms"
+            logger.info(f"Passed validation for {module_name} axioms")
+        return True, None
+
+    # check every module is structurally valid
+    modules = state.get("modules", None)
+    if (
+        modules is None or len(modules) != len(AGENT_ORDER) - 2
+    ):  # -2 because don't count kernel and watchdog
         return {
             **state,
             "kernel": {
                 **state["kernel"],
                 "system_ready": False,
             },
-            "error": "Incomplete axiom set",
+            "error": "Incomplete module set",
             "meta_status": "REINIT_REQUIRED",
         }
-    else:
-        input_data = (
-            f"Here is the input data.\n"
-            f"Kernel status: {state['kernel']['system_ready']}\n"
-            f"Agents registered: {', '.join(state['kernel']['agents_registered'])}\n"
-            f"Version info: {state['kernel']['version_info']}\n"
-            f"Kernel timestamp: {state['kernel']['kernel_timestamp']}"
-        )
 
-        structured_llm = openai_llm.with_structured_output(MetaState)
-        response = structured_llm.invoke(
-            [
-                SystemMessage(content=META_AGENT_PROMPT),
-                HumanMessage(content=input_data),
-            ]
-        )
-
+    # axiom validation
+    is_valid, error = _validate_axioms()
+    if not is_valid:
         return {
             **state,
             "kernel": {
                 **state["kernel"],
-                "system_ready": True,
+                "system_ready": False,
             },
-            "error": None,
-            "meta_status": "OK",
-            "next_agent_index": 2,
-            "meta": {
-                **response,
-            },
+            "error": error,
+            "meta_status": "REINIT_REQUIRED",
         }
+
+    module_id = modules["META"]["module"]["id"]
+    version = modules["META"]["module"]["version"]
+    objective = modules["META"]["sections"]["A3"]["text"]
+    cycle_number = state["cycle_number"]
+
+    input_data = (
+        f"Here is the input data.\n"
+        f"Kernel status: {state['kernel']['system_ready']}\n"
+        f"Agents registered: {', '.join(state['kernel']['agents_registered'])}\n"
+        f"Cycle: {cycle_number}\n"
+        # f"Version info: {state['kernel']['version_info']}\n"
+        f"Kernel timestamp: {state['kernel']['kernel_timestamp']}"
+    )
+
+    structured_llm = openai_llm.with_structured_output(MetaState)
+    response = structured_llm.invoke(
+        [
+            SystemMessage(
+                content=META_AGENT_PROMPT.format(
+                    id=module_id, version=version, objective=objective
+                )
+            ),
+            HumanMessage(content=input_data),
+        ]
+    )
+
+    return {
+        **state,
+        "kernel": {
+            **state["kernel"],
+            "system_ready": True,
+        },
+        "error": None,
+        "meta_status": "OK",
+        "next_agent_index": 2,
+        "meta": {
+            **response,
+        },
+    }
 
 
 # TODO: need to integrate API
@@ -262,17 +283,17 @@ def inu_agent(state: State):
     }
 
     context_vector = state["context"]["context_vector"]
-    axioms_list = []
-    L_00 = next((x for x in state["axioms"] if x.get("execution_step") == "L-00"), None)
-    axioms_list.append(L_00)
+    # axioms_list = []
+    # L_00 = next((x for x in state["axioms"] if x.get("execution_step") == "L-00"), None)
+    # axioms_list.append(L_00)
 
-    for vector, value in context_vector.items():
-        config = AXIOM_CONFIG.get(vector)
-        if config and value > config["threshold"]:
-            axiom_id = config["axiom_id"]
-            axiom = axiom_map.get(axiom_id)
-            if axiom:
-                axioms_list.append(axiom)
+    # for vector, value in context_vector.items():
+    #     config = AXIOM_CONFIG.get(vector)
+    #     if config and value > config["threshold"]:
+    #         axiom_id = config["axiom_id"]
+    #         axiom = axiom_map.get(axiom_id)
+    #         if axiom:
+    # axioms_list.append(axiom)
 
     input_data = (
         f"Here is the context vector from KON: {context_vector}"
@@ -561,7 +582,7 @@ def check_agent_prerequisites(next_agent_name: str, state: State) -> bool:
     if next_agent_name == "CONTEXT_AGENT":
 
         # cqi should be between 0.45 and 0.65 from META_AGENT
-        current_cqi = float(state.get("meta", {}).get("current_cqi"))
+        current_cqi = float(state.get("meta", {}).get("current_cqi", 0))
         if current_cqi < 0.45 or current_cqi > 0.65:
             logger.info(
                 "Validation Failed for CONTEXT_AGENT: because current cqi is not between 0.45 and 0.65."
@@ -621,7 +642,7 @@ workflow = StateGraph(State)
 
 # Add nodes
 workflow.add_node("KERNEL_AGENT", lambda state: kernel_tool(state, workflow))
-workflow.add_node("META_AGENT", meta_tool)
+workflow.add_node("META_AGENT", meta_agent)
 workflow.add_node("CONTEXT_AGENT", context_tool)
 workflow.add_node("INU_AGENT", inu_agent)
 workflow.add_node("KNU_AGENT", knu_tool)
