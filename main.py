@@ -583,7 +583,9 @@ def check_agent_prerequisites(next_agent_name: str, state: State) -> bool:
 
         # cqi should be between 0.45 and 0.65 from META_AGENT
         current_cqi = float(state.get("meta", {}).get("current_cqi", 0))
-        if current_cqi < 0.45 or current_cqi > 0.65:
+        cycle_number = state["cycle_number"]
+        if (current_cqi < 0.45 or current_cqi > 0.65) and cycle_number != 1:
+            # current cqi is empty in the first cycle
             logger.info(
                 "Validation Failed for CONTEXT_AGENT: because current cqi is not between 0.45 and 0.65."
             )
